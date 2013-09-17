@@ -80,6 +80,7 @@ set(DEFSRC
 	rna_sculpt_paint.c
 	rna_sensor.c
 	rna_sequencer.c
+	rna_shader.c
 	rna_smoke.c
 	rna_sound.c
 	rna_space.c
@@ -131,6 +132,7 @@ set(SRC_RNA_INC
 	../RNA_define.h
 	../RNA_documentation.h
 	../RNA_enum_types.h
+	../RNA_shader_utils.h
 	../RNA_types.h
 )
 

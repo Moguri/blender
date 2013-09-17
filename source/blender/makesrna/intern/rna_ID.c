@@ -74,6 +74,7 @@ EnumPropertyItem id_type_items[] = {
 	{ID_TE, "TEXTURE", ICON_TEXTURE_DATA, "Texture", ""},
 	{ID_WO, "WORLD", ICON_WORLD_DATA, "World", ""},
 	{ID_WM, "WINDOWMANAGER", ICON_FULLSCREEN, "Window Manager", ""},
+	{ID_SH, "SHADER", ICON_TEXT, "Shader", ""},
 	{0, NULL, 0, NULL, NULL}
 };
 
@@ -153,6 +154,7 @@ short RNA_type_to_ID_code(StructRNA *type)
 	if (RNA_struct_is_a(type, &RNA_WindowManager)) return ID_WM;
 	if (RNA_struct_is_a(type, &RNA_MovieClip)) return ID_MC;
 	if (RNA_struct_is_a(type, &RNA_Mask)) return ID_MSK;
+	if (RNA_struct_is_a(type, &RNA_Shader)) return ID_SH;
 
 	return 0;
 }
@@ -190,6 +192,7 @@ StructRNA *ID_code_to_RNA_type(short idcode)
 		case ID_WM: return &RNA_WindowManager;
 		case ID_MC: return &RNA_MovieClip;
 		case ID_MSK: return &RNA_Mask;
+		case ID_SH: return &RNA_Shader;
 		default: return &RNA_ID;
 	}
 }

@@ -76,6 +76,7 @@ static IDType idtypes[] = {
 	{ ID_SCE,    "Scene",            "scenes",          IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_SCR,    "Screen",           "screens",         0                       },
 	{ ID_SEQ,    "Sequence",         "sequences",       0                       }, /* not actually ID data */
+	{ ID_SH,     "Shader",           "shaders",         0                       },
 	{ ID_SPK,    "Speaker",          "speakers",        IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_SO,     "Sound",            "sounds",          IDTYPE_FLAGS_ISLINKABLE },
 	{ ID_TE,     "Texture",          "textures",        IDTYPE_FLAGS_ISLINKABLE },

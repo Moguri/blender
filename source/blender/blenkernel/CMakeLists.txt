@@ -145,6 +145,7 @@ set(SRC
 	intern/seqeffects.c
 	intern/seqmodifier.c
 	intern/sequencer.c
+	intern/shader.c
 	intern/shrinkwrap.c
 	intern/sketch.c
 	intern/smoke.c
@@ -243,6 +244,7 @@ set(SRC
 	BKE_scene.h
 	BKE_screen.h
 	BKE_sequencer.h
+	BKE_shader.h
 	BKE_shrinkwrap.h
 	BKE_sketch.h
 	BKE_smoke.h

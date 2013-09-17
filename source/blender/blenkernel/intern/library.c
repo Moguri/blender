@@ -107,6 +107,7 @@
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_packedFile.h"
+#include "BKE_shader.h"
 #include "BKE_speaker.h"
 #include "BKE_sound.h"
 #include "BKE_screen.h"
@@ -516,6 +517,8 @@ ListBase *which_libbase(Main *mainlib, short type)
 			return &(mainlib->mask);
 		case ID_LS:
 			return &(mainlib->linestyle);
+		case ID_SH:
+			return &(mainlib->shader);
 	}
 	return NULL;
 }
@@ -611,6 +614,7 @@ int set_listbasepointers(Main *main, ListBase **lb)
 	lb[a++] = &(main->wm);
 	lb[a++] = &(main->movieclip);
 	lb[a++] = &(main->mask);
+	lb[a++] = &(main->shader);
 	
 	lb[a] = NULL;
 
@@ -731,6 +735,9 @@ static ID *alloc_libblock_notest(short type)
 			break;
 		case ID_LS:
 			id = MEM_callocN(sizeof(FreestyleLineStyle), "Freestyle Line Style");
+			break;
+		case ID_SH:
+			id = MEM_callocN(sizeof(Shader), "Shader");
 			break;
 	}
 	return id;
@@ -1006,6 +1013,9 @@ void BKE_libblock_free_ex(Main *bmain, void *idv, bool do_id_user)
 			break;
 		case ID_LS:
 			BKE_free_linestyle((FreestyleLineStyle *)id);
+			break;
+		case ID_SH:
+			BKE_shader_lib_free((Shader *) id);
 			break;
 	}
 
