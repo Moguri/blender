@@ -35,6 +35,7 @@
 #include "DNA_defs.h"
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
+#include "DNA_shader_types.h"
 
 #ifndef MAX_MTEX
 #define MAX_MTEX	18
@@ -81,6 +82,18 @@ typedef struct GameSettings {
 	int face_orientation;
 	int pad1;
 } GameSettings;
+
+typedef struct CustomShader {
+	struct CustomShader *next, *prev;
+	struct Shader *shader;
+} CustomShader;
+
+typedef struct CustomUniform {
+	struct CustomUniform *next, *prev;
+	char name[64];
+	short type, size, pad[2];
+	void *data;
+} CustomUniform;
 
 typedef struct Material {
 	ID id;
@@ -145,8 +158,12 @@ typedef struct Material {
 	float darkness;
 
 	/* runtime - OR'd from 'mtex' */
-	short texco, mapto;
-	
+    short texco, mapto;
+
+	/* custom shaders */
+	ListBase custom_shaders;
+	int actshader, actshader_pad;
+
 	/* ramp colors */
 	struct ColorBand *ramp_col;
 	struct ColorBand *ramp_spec;

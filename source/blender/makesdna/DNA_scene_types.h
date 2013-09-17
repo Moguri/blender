@@ -665,7 +665,12 @@ typedef struct GameData {
 	short obstacleSimulation;
 	short raster_storage;
 	float levelHeight;
-	float deactivationtime, lineardeactthreshold, angulardeactthreshold, pad2;
+	float deactivationtime, lineardeactthreshold, angulardeactthreshold;
+	
+	int actpostfilter;
+	ListBase postfilters;
+	int actgshader, shaderpad;
+	ListBase gshaders;
 } GameData;
 
 #define STEREO_NOSTEREO		1
