@@ -48,6 +48,10 @@ void OBJECT_OT_material_slot_copy(struct wmOperatorType *ot);
 void MATERIAL_OT_new(struct wmOperatorType *ot);
 void TEXTURE_OT_new(struct wmOperatorType *ot);
 void WORLD_OT_new(struct wmOperatorType *ot);
+void SHADER_OT_new(struct wmOperatorType *ot);
+
+void MATERIAL_OT_shader_add(struct wmOperatorType *ot);
+void MATERIAL_OT_shader_remove(struct wmOperatorType *ot);
 
 void MATERIAL_OT_copy(struct wmOperatorType *ot);
 void MATERIAL_OT_paste(struct wmOperatorType *ot);

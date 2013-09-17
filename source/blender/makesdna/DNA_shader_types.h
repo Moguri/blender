@@ -43,7 +43,7 @@ typedef struct Uniform {
 
 	short type;
 	short size;
-    void *data;
+	void *data;
 } Uniform;
 
 typedef struct Shader {
@@ -60,7 +60,7 @@ typedef struct Shader {
 	struct Text *sourcetext;
 	char *source;
 	ListBase uniforms;
-    struct GHash *uniform_cache;
+	struct GHash *uniform_cache;
 } Shader;
 
 typedef struct ShaderLink {
@@ -81,7 +81,7 @@ enum SHADER_2DFILTER_MODE {
 	SHADER_2DFILTER_PREWITT,
 	SHADER_2DFILTER_GRAYSCALE,
 	SHADER_2DFILTER_SEPIA,
-    SHADER_2DFILTER_INVERT
+	SHADER_2DFILTER_INVERT
 };
 
 /* type */

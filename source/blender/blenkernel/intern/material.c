@@ -205,6 +205,9 @@ void init_material(Material *ma)
 	ma->mode = MA_TRACEBLE | MA_SHADBUF | MA_SHADOW | MA_RAYBIAS | MA_TANGENT_STR | MA_ZTRANSP;
 	ma->shade_flag = MA_APPROX_OCCLUSION;
 	ma->preview = NULL;
+
+	ma->custom_shaders.first = NULL;
+	ma->custom_shaders.last = NULL;
 }
 
 Material *BKE_material_add(Main *bmain, const char *name)

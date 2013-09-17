@@ -634,6 +634,75 @@ class MATERIAL_PT_flare(MaterialButtonsPanel, Panel):
         col.prop(halo, "flare_subflare_size", text="Subsize")
 
 
+class MATERIAL_PT_shaders(MaterialButtonsPanel, bpy.types.Panel):
+    bl_label = "Custom Shaders"
+    COMPAT_ENGINES = {'BLENDER_GAME'}
+
+    @classmethod
+    def poll(cls,context):
+        mat = context.material
+        engine = context.scene.render.engine
+        return mat and (mat.type in ('SURFACE', 'WIRE')) and (engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+
+        mat = active_node_mat(context.material)
+
+        row = layout.row()
+        col = row.column()
+        col.template_list("RENDER_PT_shaderslots", "", mat, "shaders",
+            mat, "active_shader_index", rows=2)
+        col.template_ID(mat, "active_shader", new="shader.new")
+        col = row.column(align=True)
+        col.operator("material.shader_add", icon='ZOOMIN', text="")
+        col.operator("material.shader_remove", icon='ZOOMOUT', text="").index = mat.active_shader_index
+
+        col = layout.column()
+
+        shader = mat.active_shader
+        if shader:
+            row = col.row()
+            row.prop(shader, "type", expand=True)
+
+            col.label("Source:")
+            row = col.row()
+            row.prop(shader, "shader_location", expand=True)
+            if shader.shader_location == "INTERNAL":
+                col.prop(shader, "source_text", text="")
+            elif shader.shader_location == "EXTERNAL":
+                col.prop(shader, "source_path", text="")
+
+            if shader.type == "GEOMETRY":
+                col.prop(shader, "geometry_input")
+                col.prop(shader, "geometry_output")
+
+            if shader.uniforms:
+                col.label("Uniforms:")
+
+            for uniform in shader.uniforms:
+                col = layout.column()
+                if hasattr(uniform, "value"):
+                    reserved = uniform.name.startswith("bgl_")
+                    if uniform.type in ("VEC2", "VEC3", "VEC4", "IVEC2", "IVEC3", "IVEC4"):
+                        if not reserved:
+                            col.label(uniform.name + ":")
+                            row = col.row()
+                            row.prop(uniform, "value", text="")
+                        else:
+                            col.label(uniform.name)
+                    else:
+                        row = col.row()
+                        if not reserved:
+                            row.label(uniform.name + ":")
+                            row.prop(uniform, "value", text="")
+                        else:
+                            row.label(uniform.name)
+
+                    col.active = not reserved
+
+
 class MATERIAL_PT_game_settings(MaterialButtonsPanel, Panel):
     bl_label = "Game Settings"
     COMPAT_ENGINES = {'BLENDER_GAME'}
