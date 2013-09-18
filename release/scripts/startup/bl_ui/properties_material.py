@@ -674,10 +674,6 @@ class MATERIAL_PT_shaders(MaterialButtonsPanel, bpy.types.Panel):
             elif shader.shader_location == "EXTERNAL":
                 col.prop(shader, "source_path", text="")
 
-            if shader.type == "GEOMETRY":
-                col.prop(shader, "geometry_input")
-                col.prop(shader, "geometry_output")
-
             if shader.uniforms:
                 col.label("Uniforms:")
 

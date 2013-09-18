@@ -53,10 +53,7 @@ typedef struct Shader {
 	char location;
 	char sourceenum;
 	char sourcepath[240];
-	char pass;
-	char pad;
-	char geom_in;
-	char geom_out;
+	int pad;
 	struct Text *sourcetext;
 	char *source;
 	ListBase uniforms;
@@ -72,12 +69,6 @@ typedef struct ShaderLink {
 /* type */
 #define SHADER_TYPE_VERTEX		0
 #define SHADER_TYPE_FRAGMENT	1
-#define SHADER_TYPE_GEOMETRY	2
-
-/* pass */
-#define SHADER_PASS_RENDER		0
-#define SHADER_PASS_PRE			1
-#define	SHADER_PASS_LIGHT		2
 
 /* use */
 #define SHADER_USE_MATERIAL		0
@@ -89,19 +80,6 @@ typedef struct ShaderLink {
 #define SHADER_LOC_BUILTIN	0
 #define SHADER_LOC_INTERNAL	1
 #define SHADER_LOC_EXTERNAL	2
-
-
-/* geom_in */
-#define SHADER_GEOM_IN_TRIS			0
-#define SHADER_GEOM_IN_LINES		1
-#define SHADER_GEOM_IN_LINES_ADJ	2
-#define SHADER_GEOM_IN_POINTS		3
-#define SHADER_GEOM_IN_TRIS_ADJ		4
-
-/* geom_out */
-#define SHADER_GEOM_OUT_TRIANGLE_STRIP	0
-#define SHADER_GEOM_OUT_LINE_STRIP		1
-#define SHADER_GEOM_OUT_POINTS			2
 
 /* uniform types */
 #define SHADER_UNF_FLOAT	1

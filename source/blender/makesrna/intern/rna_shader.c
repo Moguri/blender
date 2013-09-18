@@ -373,14 +373,6 @@ void RNA_def_shader(BlenderRNA *brna)
 	static EnumPropertyItem prop_type_items[] = {
 		{SHADER_TYPE_VERTEX, "VERTEX", 0, "Vertex", "Use as vertex shader"},
 		{SHADER_TYPE_FRAGMENT, "FRAGMENT", 0, "Fragment", "Use as fragment shader"},
-		{SHADER_TYPE_GEOMETRY, "GEOMETRY", 0, "Geometry", "Use as geometry shader"},
-		{0, NULL, 0, NULL, NULL}
-	};
-
-	static EnumPropertyItem prop_pass_items[] = {
-		{SHADER_PASS_RENDER, "RENDER", 0, "Render", "Use this shader in the main render pass"},
-		{SHADER_PASS_PRE, "PREPASS", 0, "Pre-Pass", "Use this shader in pass before the main render"},
-		{SHADER_PASS_LIGHT, "LIGHT", 0, "Light", "Use this shader when drawing lights"},
 		{0, NULL, 0, NULL, NULL}
 	};
 
@@ -390,41 +382,6 @@ void RNA_def_shader(BlenderRNA *brna)
 		{SHADER_LOC_EXTERNAL, "EXTERNAL", 0, "External", "Use a shader from an external file"},
 		{0, NULL, 0, NULL, NULL}
 	};
-
-	static EnumPropertyItem prop_filter_loc_items[] = {
-		{SHADER_LOC_BUILTIN, "BUILTIN", 0, "Builtin", "Use a builtin shader"},
-		{SHADER_LOC_INTERNAL, "INTERNAL", 0, "Internal", "Use a shader from a text datablock"},
-		{SHADER_LOC_EXTERNAL, "EXTERNAL", 0, "External", "Use a shader from an external file"},
-		{0, NULL, 0, NULL, NULL}
-	};
-
-	static EnumPropertyItem prop_geomin_items[] = {
-		{SHADER_GEOM_IN_POINTS, "POINTS", 0, "Points", "Use points as input"},
-		{SHADER_GEOM_IN_LINES, "LINES", 0, "Lines", "Use lines as input"},
-		{SHADER_GEOM_IN_LINES_ADJ, "LINES_ADJ", 0, "Lines Adjacency", "Use adjacent lines as input"},
-		{SHADER_GEOM_IN_TRIS, "TRIS", 0, "Triangles", "Use triangles as input"},
-		{SHADER_GEOM_IN_TRIS_ADJ, "TRIS_ADJ", 0, "Triangles Adjacency", "Use adjacent triangles as input"},
-		{0, NULL, 0, NULL, NULL}};
-
-	static EnumPropertyItem prop_geomout_items[] = {
-		{SHADER_GEOM_OUT_POINTS, "POINTS", 0, "Points", "Output points"},
-		{SHADER_GEOM_OUT_LINE_STRIP, "LINE_STRIP", 0, "Line Strip", "Output line strips"},
-		{SHADER_GEOM_OUT_TRIANGLE_STRIP, "TRIANGLE_STRIP", 0, "Triangle Strip", "Output triangle strips"},
-		{0, NULL, 0, NULL, NULL}};
-
-	static EnumPropertyItem prop_filter_builtin_items[] = {
-		//{SHADER_2DFILTER_MOTIONBLUR, "MOTIONBLUR", 0, "Motion Blur", ""},
-		{SHADER_2DFILTER_BLUR, "BLUR", 0, "Blur", "Decreases contrast"},
-		{SHADER_2DFILTER_SHARPEN, "SHARPEN", 0, "Sharpen", "Increases contrast"},
-		{SHADER_2DFILTER_DILATION, "DILATION", 0, "Dilation", ""},
-		{SHADER_2DFILTER_EROSION, "EROSION", 0, "Erosion", ""},
-		{SHADER_2DFILTER_LAPLACIAN, "LAPLACIAN", 0, "Laplacian", ""},
-		{SHADER_2DFILTER_SOBEL, "SOBEL", 0, "Sobel", ""},
-		{SHADER_2DFILTER_PREWITT, "PREWITT", 0, "Prewitt", ""},
-		{SHADER_2DFILTER_GRAYSCALE, "GRAYSCALE", 0, "Grascale", "Removes color"},
-		{SHADER_2DFILTER_SEPIA, "SEPIA", 0, "Sepia", "Converts color to a Sepia tone"},
-		{SHADER_2DFILTER_INVERT, "INVERT", 0, "Invert", "Inverts colors"},
-		{0, NULL, 0, NULL, NULL}};
 
 	srna = RNA_def_struct(brna, "Shader", "ID");
 	RNA_def_struct_ui_text(srna, "Shader", "Shader datablock to define custom shading for a material");
@@ -436,29 +393,11 @@ void RNA_def_shader(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Type", "Type of shader to use");
 	RNA_def_property_update(prop, 0, "rna_Shader_update");
 
-	prop = RNA_def_property(srna, "render_pass", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "pass");
-	RNA_def_property_enum_items(prop, prop_pass_items);
-	RNA_def_property_ui_text(prop, "Pass", "Controls when the shader is used");
-	RNA_def_property_update(prop, 0, "rna_Shader_update");
-
 	prop = RNA_def_property(srna, "shader_location", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "location");
 	RNA_def_property_enum_items(prop, prop_shader_loc_items);
 	RNA_def_property_ui_text(prop, "Location", "Location of the shader to use");
 	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
-
-	prop = RNA_def_property(srna, "filter_location", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "location");
-	RNA_def_property_enum_items(prop, prop_filter_loc_items);
-	RNA_def_property_ui_text(prop, "Location", "Location of the shader to use");
-	RNA_def_property_update(prop, 0, "rna_Shader_update");
-
-	prop = RNA_def_property(srna, "filter_builtin", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "sourceenum");
-	RNA_def_property_enum_items(prop, prop_filter_builtin_items);
-	RNA_def_property_ui_text(prop, "Filter", "Builtin filter to use");
-	RNA_def_property_update(prop, 0, "rna_Shader_update");
 
 	prop = RNA_def_property(srna, "source_text", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "sourcetext");
@@ -471,18 +410,6 @@ void RNA_def_shader(BlenderRNA *brna)
 	RNA_def_property_string_sdna(prop, NULL, "sourcepath");
 	RNA_def_property_ui_text(prop, "Source", "The path to the shader to use");
 	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
-
-	prop = RNA_def_property(srna, "geometry_input", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "geom_in");
-	RNA_def_property_enum_items(prop, prop_geomin_items);
-	RNA_def_property_ui_text(prop, "Input", "The input type for the geometry shader");
-	RNA_def_property_update(prop, 0, "rna_Shader_update");
-
-	prop = RNA_def_property(srna, "geometry_output", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "geom_out");
-	RNA_def_property_enum_items(prop, prop_geomout_items);
-	RNA_def_property_ui_text(prop, "Output", "The output type for the geometry shader");
-	RNA_def_property_update(prop, 0, "rna_Shader_update");
 
 	prop = RNA_def_property(srna, "uniforms", PROP_COLLECTION, PROP_NONE);
 	RNA_def_property_collection_sdna(prop, NULL, "uniforms", NULL);

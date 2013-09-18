@@ -411,53 +411,6 @@ class RENDER_PT_shaderslots(UIList):
             layout.label("", icon_value=icon)
 
 
-def display_shader_settings(shader, layout, type="GLOBAL"):
-    col = layout.column()
-
-    if type == "GLOBAL":
-        row = col.row()
-        row.prop(shader, "type", expand=True)
-        col.label("Pass:")
-        row = col.row()
-        row.prop(shader, "render_pass", expand=True)
-        
-    col.label("Source:")
-    row = col.row()
-    row.prop(shader, "shader_location", expand=True)
-
-    if shader.shader_location == "BUILTIN":
-        if type == "FILTER":
-            col.prop(shader, "filter_builtin")
-    if shader.shader_location == "INTERNAL":
-        col.prop(shader, "source_text", text="")
-    elif shader.shader_location == "EXTERNAL":
-        col.prop(shader, "source_path", text="")
-
-    if shader.uniforms:
-        col.label("Uniforms:")
-
-    for uniform in shader.uniforms:
-        col = layout.column()
-        if hasattr(uniform, "value"):
-            reserved = uniform.name.startswith("bgl_")
-            if uniform.type in ("VEC2", "VEC3", "VEC4", "IVEC2", "IVEC3", "IVEC4"):
-                if not reserved:
-                    col.label(uniform.name + ":")
-                    row = col.row()
-                    row.prop(uniform, "value", text="")
-                else:
-                    col.label(uniform.name)
-            else:
-                row = col.row()
-                if not reserved:
-                    row.label(uniform.name + ":")
-                    row.prop(uniform, "value", text="")
-                else:
-                    row.label(uniform.name)
-
-            col.active = not reserved
-
-
 class RENDER_PT_game_system(RenderButtonsPanel, Panel):
     bl_label = "System"
     COMPAT_ENGINES = {'BLENDER_GAME'}

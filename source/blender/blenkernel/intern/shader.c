@@ -58,12 +58,8 @@ void init_shader(Shader *sh)
 	sh->type = SHADER_TYPE_FRAGMENT;
 	sh->location = SHADER_LOC_BUILTIN;
 
-	sh->sourceenum = SHADER_2DFILTER_BLUR;
-
 	sh->uniforms.first = NULL;
 	sh->uniforms.last = NULL;
-
-	sh->geom_in = sh->geom_out = -1;
 
 	sh->uniform_cache = BLI_ghash_str_new("Uniform Cache");
 }
@@ -120,10 +116,6 @@ void BKE_shader_source_merge(Shader *dst, const Shader *src)
 	char count[33];
 	char i = 0;
 	char *dst_main, *src_main, *search;
-
-	/* Only one type of geometry i/o can be used */
-	dst->geom_in = src->geom_in;
-	dst->geom_out = src->geom_out;
 
 	/* Handle a couple of NULL cases */
 	if (src->source == NULL)
