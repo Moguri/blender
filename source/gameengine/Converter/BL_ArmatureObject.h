@@ -79,7 +79,7 @@ public:
 	void BlendInPose(struct bPose *blend_pose, float weight, short mode);
 	void RestorePose();
 
-	bool SetActiveAction(class BL_ActionActuator *act, short priority, double curtime);
+	bool UpdateTimestep(double curtime);
 	
 	struct bArmature *GetArmature() { return (bArmature*)m_objArma->data; }
 	const struct bArmature * GetArmature() const { return (bArmature*)m_objArma->data; }
@@ -128,12 +128,9 @@ protected:
 	Object				*m_objArma;
 	struct bPose		*m_pose;
 	struct bPose		*m_armpose;
-	struct bPose		*m_framePose;
 	struct Scene		*m_scene; // need for BKE_pose_where_is 
 	double	m_lastframe;
 	double  m_timestep;		// delta since last pose evaluation.
-	class BL_ActionActuator *m_activeAct;
-	short	m_activePriority;
 	int		m_vert_deform_type;
 	size_t  m_constraintNumber;
 	size_t  m_channelNumber;

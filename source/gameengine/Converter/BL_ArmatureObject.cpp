@@ -220,12 +220,9 @@ BL_ArmatureObject::BL_ArmatureObject(
 :	KX_GameObject(sgReplicationInfo,callbacks),
 	m_controlledConstraints(),
 	m_poseChannels(),
-	m_framePose(NULL),
 	m_scene(scene), // maybe remove later. needed for BKE_pose_where_is
 	m_lastframe(0.0),
 	m_timestep(0.040),
-	m_activeAct(NULL),
-	m_activePriority(999),
 	m_vert_deform_type(vert_deform_type),
 	m_constraintNumber(0),
 	m_channelNumber(0),
@@ -247,9 +244,6 @@ BL_ArmatureObject::~BL_ArmatureObject()
 	while ((channel = static_cast<BL_ArmatureChannel*>(m_poseChannels.Remove())) != NULL) {
 		delete channel;
 	}
-
-	if (m_framePose)
-		BKE_pose_free(m_framePose);
 
 	if (m_objArma)
 		BKE_libblock_free(&G.main->object, m_objArma);
@@ -508,40 +502,14 @@ void BL_ArmatureObject::BlendInPose(bPose *blend_pose, float weight, short mode)
 	game_blend_poses(m_pose, blend_pose, weight, mode);
 }
 
-bool BL_ArmatureObject::SetActiveAction(BL_ActionActuator *act, short priority, double curtime)
+bool BL_ArmatureObject::UpdateTimestep(double curtime)
 {
 	if (curtime != m_lastframe) {
-		m_activePriority = 9999;
 		// compute the timestep for the underlying IK algorithm
 		m_timestep = curtime-m_lastframe;
 		m_lastframe= curtime;
-		m_activeAct = NULL;
-		// remember the pose at the start of the frame
-		//GetPose(&m_framePose);
 	}
 
-	if (act) 
-	{
-		if (priority<=m_activePriority)
-		{
-			if (priority<m_activePriority) {
-				// this action overwrites the previous ones, start from initial pose to cancel their effects
-				SetPose(m_framePose);
-				if (m_activeAct && (m_activeAct!=act))
-					/* Reset the blend timer since this new action cancels the old one */
-					m_activeAct->SetBlendTime(0.0);
-			}
-			m_activeAct = act;
-			m_activePriority = priority;
-			m_lastframe = curtime;
-		
-			return true;
-		}
-		else {
-			act->SetBlendTime(0.0);
-			return false;
-		}
-	}
 	return false;
 }
 
@@ -652,7 +620,7 @@ KX_PYMETHODDEF_DOC_NOARGS(BL_ArmatureObject, update,
 						  "This is automatically done if a KX_ArmatureActuator with mode run is active\n"
 						  "or if an action is playing. This function is useful in other cases.\n")
 {
-	SetActiveAction(NULL, 0, KX_GetActiveEngine()->GetFrameTime());
+	UpdateTimestep(KX_GetActiveEngine()->GetFrameTime());
 	Py_RETURN_NONE;
 }
 

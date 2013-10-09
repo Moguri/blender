@@ -423,7 +423,7 @@ void BL_Action::Update(float curtime)
 		if (m_layer_weight >= 0)
 			obj->BlendInPose(m_blendpose, m_layer_weight, m_blendmode);
 
-		obj->SetActiveAction(NULL, 0, curtime);
+		obj->UpdateTimestep(curtime);
 	}
 	else
 	{
