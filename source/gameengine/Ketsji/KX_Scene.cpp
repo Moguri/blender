@@ -102,6 +102,8 @@
 
 #include <stdio.h>
 
+#include "BLI_threads.h"
+
 static void *KX_SceneReplicationFunc(SG_IObject* node,void* gameobj,void* scene)
 {
 	KX_GameObject* replica = ((KX_Scene*)scene)->AddNodeReplicaObject(node,(KX_GameObject*)gameobj);
@@ -1598,10 +1600,13 @@ void KX_Scene::AddAnimatedObject(CValue* gameobj)
 
 void KX_Scene::UpdateAnimations(double curtime)
 {
-	KX_GameObject *gameobj;
-	bool needs_update;
+	BLI_begin_threaded_malloc();
 
+	#pragma omp parallel for
 	for (int i=0; i<m_animatedlist->GetCount(); ++i) {
+		KX_GameObject *gameobj;
+		bool needs_update;
+
 		gameobj = (KX_GameObject*)m_animatedlist->GetValue(i);
 
 		// Non-armature updates are fast enough, so just update them
@@ -1642,6 +1647,8 @@ void KX_Scene::UpdateAnimations(double curtime)
 		if (needs_update)
 			gameobj->UpdateActionManager(curtime);
 	}
+
+	BLI_end_threaded_malloc();
 }
 
 void KX_Scene::LogicUpdateFrame(double curtime, bool frame)
