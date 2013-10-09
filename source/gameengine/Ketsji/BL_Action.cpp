@@ -54,7 +54,6 @@ extern "C" {
 BL_Action::BL_Action(class KX_GameObject* gameobj)
 :
 	m_action(NULL),
-	m_pose(NULL),
 	m_blendpose(NULL),
 	m_blendinpose(NULL),
 	m_obj(gameobj),
@@ -77,12 +76,10 @@ BL_Action::BL_Action(class KX_GameObject* gameobj)
 
 BL_Action::~BL_Action()
 {
-	if (m_pose)
-		game_free_pose(m_pose);
 	if (m_blendpose)
-		game_free_pose(m_blendpose);
+		BKE_pose_free(m_blendpose);
 	if (m_blendinpose)
-		game_free_pose(m_blendinpose);
+		BKE_pose_free(m_blendinpose);
 	ClearControllerList();
 }
 
@@ -208,7 +205,7 @@ bool BL_Action::Play(const char* name,
 	if (m_obj->GetGameObjectType() == SCA_IObject::OBJ_ARMATURE)
 	{
 		BL_ArmatureObject *obj = (BL_ArmatureObject*)m_obj;
-		obj->GetMRDPose(&m_blendinpose);
+		obj->GetPose(&m_blendinpose);
 	}
 	else
 	{
@@ -402,22 +399,12 @@ void BL_Action::Update(float curtime)
 	if (m_obj->GetGameObjectType() == SCA_IObject::OBJ_ARMATURE)
 	{
 		BL_ArmatureObject *obj = (BL_ArmatureObject*)m_obj;
-		obj->GetPose(&m_pose);
+
+		if (m_layer_weight >= 0)
+			obj->GetPose(&m_blendpose);
 
 		// Extract the pose from the action
-		{
-			Object *arm = obj->GetArmatureObject();
-			bPose *temp = arm->pose;
-
-			arm->pose = m_pose;
-
-			PointerRNA ptrrna;
-			RNA_id_pointer_create(&arm->id, &ptrrna);
-
-			animsys_evaluate_action(&ptrrna, m_action, NULL, m_localtime);
-
-			arm->pose = temp;
-		}
+		obj->SetPoseByAction(m_action, m_localtime);
 
 		// Handle blending between armature actions
 		if (m_blendin && m_blendframe<m_blendin)
@@ -428,18 +415,13 @@ void BL_Action::Update(float curtime)
 			float weight = 1.f - (m_blendframe/m_blendin);
 
 			// Blend the poses
-			game_blend_poses(m_pose, m_blendinpose, weight, ACT_BLEND_BLEND);
+			obj->BlendInPose(m_blendinpose, weight, ACT_BLEND_BLEND);
 		}
 
 
 		// Handle layer blending
 		if (m_layer_weight >= 0)
-		{
-			obj->GetMRDPose(&m_blendpose);
-			game_blend_poses(m_pose, m_blendpose, m_layer_weight, m_blendmode);
-		}
-
-		obj->SetPose(m_pose);
+			obj->BlendInPose(m_blendpose, m_layer_weight, m_blendmode);
 
 		obj->SetActiveAction(NULL, 0, curtime);
 	}

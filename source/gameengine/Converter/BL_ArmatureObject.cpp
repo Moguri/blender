@@ -42,7 +42,14 @@
 #include "BIK_api.h"
 #include "BKE_action.h"
 #include "BKE_armature.h"
+#include "BKE_object.h"
 #include "BKE_library.h"
+#include "BKE_main.h"
+#include "BKE_global.h"
+
+extern "C" {
+#include "BKE_animsys.h"
+}
 
 #include "BKE_constraint.h"
 #include "CTR_Map.h"
@@ -53,6 +60,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_constraint_types.h"
+#include "RNA_access.h"
 #include "KX_PythonSeq.h"
 #include "KX_PythonInit.h"
 #include "KX_KetsjiEngine.h"
@@ -70,7 +78,7 @@
  * When it is about to evaluate the pose, set the KX object position in the obmat of the corresponding
  * Blender objects and restore after the evaluation.
  */
-void game_copy_pose(bPose **dst, bPose *src, int copy_constraint)
+static void game_copy_pose(bPose **dst, bPose *src, int copy_constraint)
 {
 	bPose *out;
 	bPoseChannel *pchan, *outpchan;
@@ -85,7 +93,7 @@ void game_copy_pose(bPose **dst, bPose *src, int copy_constraint)
 		return;
 	}
 	else if (*dst==src) {
-		printf("BKE_pose_copy_data source and target are the same\n");
+		printf("game_copy_pose source and target are the same\n");
 		*dst=NULL;
 		return;
 	}
@@ -142,7 +150,7 @@ void game_copy_pose(bPose **dst, bPose *src, int copy_constraint)
 
 
 /* Only allowed for Poses with identical channels */
-void game_blend_poses(bPose *dst, bPose *src, float srcweight, short mode)
+static void game_blend_poses(bPose *dst, bPose *src, float srcweight, short mode)
 {
 	bPoseChannel *dchan;
 	const bPoseChannel *schan;
@@ -202,23 +210,6 @@ void game_blend_poses(bPose *dst, bPose *src, float srcweight, short mode)
 	dst->ctime= src->ctime;
 }
 
-void game_free_pose(bPose *pose)
-{
-	if (pose) {
-		/* free pose-channels and constraints */
-		BKE_pose_channels_free(pose);
-		
-		/* free IK solver state */
-		BIK_clear_data(pose);
-
-		/* free IK solver param */
-		if (pose->ikparam)
-			MEM_freeN(pose->ikparam);
-
-		MEM_freeN(pose);
-	}
-}
-
 BL_ArmatureObject::BL_ArmatureObject(
 				void* sgReplicationInfo, 
 				SG_Callbacks callbacks, 
@@ -229,7 +220,6 @@ BL_ArmatureObject::BL_ArmatureObject(
 :	KX_GameObject(sgReplicationInfo,callbacks),
 	m_controlledConstraints(),
 	m_poseChannels(),
-	m_objArma(armature),
 	m_framePose(NULL),
 	m_scene(scene), // maybe remove later. needed for BKE_pose_where_is
 	m_lastframe(0.0),
@@ -241,14 +231,9 @@ BL_ArmatureObject::BL_ArmatureObject(
 	m_channelNumber(0),
 	m_lastapplyframe(0.0)
 {
-	m_armature = (bArmature *)armature->data;
-
-	/* we make a copy of blender object's pose, and then always swap it with
-	 * the original pose before calling into blender functions, to deal with
-	 * replica's or other objects using the same blender object */
-	m_pose = NULL;
-	game_copy_pose(&m_pose, m_objArma->pose, 1);
-	// store the original armature object matrix
+	m_objArma = BKE_object_copy(armature);
+	m_objArma->data = BKE_armature_copy((bArmature *)armature->data);
+	m_pose = m_objArma->pose;
 	memcpy(m_obmat, m_objArma->obmat, sizeof(m_obmat));
 }
 
@@ -262,10 +247,12 @@ BL_ArmatureObject::~BL_ArmatureObject()
 	while ((channel = static_cast<BL_ArmatureChannel*>(m_poseChannels.Remove())) != NULL) {
 		delete channel;
 	}
-	if (m_pose)
-		game_free_pose(m_pose);
+
 	if (m_framePose)
-		game_free_pose(m_framePose);
+		BKE_pose_free(m_framePose);
+
+	if (m_objArma)
+		BKE_libblock_free(&G.main->object, m_objArma);
 }
 
 
@@ -431,12 +418,12 @@ CValue* BL_ArmatureObject::GetReplica()
 
 void BL_ArmatureObject::ProcessReplica()
 {
-	bPose *pose= m_pose;
 	KX_GameObject::ProcessReplica();
 
-	m_pose = NULL;
-	m_framePose = NULL;
-	game_copy_pose(&m_pose, pose, 1);
+	bArmature* tmp = (bArmature*)m_objArma->data;
+	m_objArma = BKE_object_copy(m_objArma);
+	m_objArma->data = BKE_armature_copy(tmp);
+	m_pose = m_objArma->pose;
 }
 
 void BL_ArmatureObject::ReParentLogic()
@@ -506,6 +493,21 @@ void BL_ArmatureObject::SetPose(bPose *pose)
 	m_lastapplyframe = -1.0;
 }
 
+void BL_ArmatureObject::SetPoseByAction(bAction *action, float localtime)
+{
+	Object *arm = GetArmatureObject();
+
+	PointerRNA ptrrna;
+	RNA_id_pointer_create(&arm->id, &ptrrna);
+
+	animsys_evaluate_action(&ptrrna, action, NULL, localtime);
+}
+
+void BL_ArmatureObject::BlendInPose(bPose *blend_pose, float weight, short mode)
+{
+	game_blend_poses(m_pose, blend_pose, weight, mode);
+}
+
 bool BL_ArmatureObject::SetActiveAction(BL_ActionActuator *act, short priority, double curtime)
 {
 	if (curtime != m_lastframe) {
@@ -515,7 +517,7 @@ bool BL_ArmatureObject::SetActiveAction(BL_ActionActuator *act, short priority, 
 		m_lastframe= curtime;
 		m_activeAct = NULL;
 		// remember the pose at the start of the frame
-		GetPose(&m_framePose);
+		//GetPose(&m_framePose);
 	}
 
 	if (act) 
@@ -543,11 +545,6 @@ bool BL_ArmatureObject::SetActiveAction(BL_ActionActuator *act, short priority, 
 	return false;
 }
 
-BL_ActionActuator * BL_ArmatureObject::GetActiveAction()
-{
-	return m_activeAct;
-}
-
 void BL_ArmatureObject::GetPose(bPose **pose)
 {
 	/* If the caller supplies a null pose, create a new one. */
@@ -568,22 +565,6 @@ void BL_ArmatureObject::GetPose(bPose **pose)
 
 		extract_pose_from_pose(*pose, m_pose);
 	}
-}
-
-void BL_ArmatureObject::GetMRDPose(bPose **pose)
-{
-	/* If the caller supplies a null pose, create a new one. */
-	/* Otherwise, copy the armature's pose channels into the caller-supplied pose */
-
-	if (!*pose)
-		game_copy_pose(pose, m_pose, 0);
-	else
-		extract_pose_from_pose(*pose, m_pose);
-}
-
-short BL_ArmatureObject::GetActivePriority()
-{
-	return m_activePriority;
 }
 
 double BL_ArmatureObject::GetLastFrame()

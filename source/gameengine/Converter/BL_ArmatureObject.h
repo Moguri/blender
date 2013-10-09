@@ -55,14 +55,11 @@ class BL_ArmatureObject : public KX_GameObject
 public:
 
 	double GetLastFrame ();
-	short GetActivePriority();
 	virtual void ProcessReplica();
 	virtual void ReParentLogic();
 	virtual void Relink(CTR_Map<CTR_HashedPtr, void*> *obj_map);
 	virtual bool UnlinkObject(SCA_IObject* clientobj);
 
-	class BL_ActionActuator * GetActiveAction();
-	
 	BL_ArmatureObject(
 		void* sgReplicationInfo,
 		SG_Callbacks callbacks,
@@ -73,18 +70,19 @@ public:
 	virtual ~BL_ArmatureObject();
 
 	virtual CValue*	GetReplica();
-	void GetMRDPose(struct bPose **pose);
 	void GetPose(struct bPose **pose);
 	void SetPose (struct bPose *pose);
 	struct bPose *GetOrigPose() {return m_pose;} // never edit this, only for accessing names
 
 	void ApplyPose();
+	void SetPoseByAction(struct bAction* action, float localtime);
+	void BlendInPose(struct bPose *blend_pose, float weight, short mode);
 	void RestorePose();
 
 	bool SetActiveAction(class BL_ActionActuator *act, short priority, double curtime);
 	
-	struct bArmature *GetArmature() { return m_armature; }
-	const struct bArmature * GetArmature() const { return m_armature; }
+	struct bArmature *GetArmature() { return (bArmature*)m_objArma->data; }
+	const struct bArmature * GetArmature() const { return (bArmature*)m_objArma->data; }
 	const struct Scene * GetScene() const { return m_scene; }
 	
 	Object* GetArmatureObject() {return m_objArma;}
@@ -128,7 +126,6 @@ protected:
 	/* list element: BL_ArmatureChannel. Use SG_DList to avoid list replication */
 	SG_DList			m_poseChannels;
 	Object				*m_objArma;
-	struct bArmature	*m_armature;
 	struct bPose		*m_pose;
 	struct bPose		*m_armpose;
 	struct bPose		*m_framePose;
@@ -145,11 +142,5 @@ protected:
 
 	double			m_lastapplyframe;
 };
-
-/* Pose function specific to the game engine */
-void game_blend_poses(struct bPose *dst, struct bPose *src, float srcweight, short mode); /* was blend_poses */
-//void extract_pose_from_pose(struct bPose *pose, const struct bPose *src);
-void game_copy_pose(struct bPose **dst, struct bPose *src, int copy_con);
-void game_free_pose(struct bPose *pose);
 
 #endif  /* __BL_ARMATUREOBJECT_H__ */
