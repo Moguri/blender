@@ -1648,6 +1648,23 @@ void KX_Scene::UpdateAnimations(double curtime)
 			gameobj->UpdateActionManager(curtime);
 	}
 
+	#pragma omp parallel for
+	for (int i=0; i<m_animatedlist->GetCount(); ++i) {
+		KX_GameObject *gameobj = (KX_GameObject*)m_animatedlist->GetValue(i);
+
+		CListValue *children = gameobj->GetChildren();
+		KX_GameObject *child;
+
+		for (int j=0; j<children->GetCount(); ++j) {
+			child = (KX_GameObject*)children->GetValue(j);
+
+			if (child->GetDeformer())
+				child->GetDeformer()->Update();
+		}
+
+		children->Release();
+	}
+
 	BLI_end_threaded_malloc();
 }
 

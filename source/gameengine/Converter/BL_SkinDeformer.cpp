@@ -96,6 +96,7 @@ BL_SkinDeformer::BL_SkinDeformer(BL_DeformableGameObject *gameobj,
 							m_poseApplied(false),
 							m_recalcNormal(true),
 							m_copyNormals(false),
+							m_doApply(false),
 							m_dfnrToPC(NULL)
 {
 	copy_m4_m4(m_obmat, bmeshobj->obmat);
@@ -117,6 +118,7 @@ BL_SkinDeformer::BL_SkinDeformer(
 		m_releaseobject(release_object),
 		m_recalcNormal(recalc_normal),
 		m_copyNormals(false),
+		m_doApply(false),
 		m_dfnrToPC(NULL)
 	{
 		// this is needed to ensure correct deformation of mesh:
@@ -158,7 +160,7 @@ bool BL_SkinDeformer::Apply(RAS_IPolyMaterial *mat)
 	size_t i, nmat, imat;
 
 	// update the vertex in m_transverts
-	if (!Update())
+	if (!m_doApply)
 		return false;
 
 	if (m_transverts) {
@@ -189,6 +191,8 @@ bool BL_SkinDeformer::Apply(RAS_IPolyMaterial *mat)
 		if (m_copyNormals)
 			m_copyNormals = false;
 	}
+
+	m_doApply = false;
 	return true;
 }
 
@@ -359,6 +363,7 @@ bool BL_SkinDeformer::UpdateInternal(bool shape_applied)
 		/* dynamic vertex, cannot use display list */
 		m_bDynamic = true;
 		/* indicate that the m_transverts and normals are up to date */
+		m_doApply = true;
 		return true;
 	}
 
