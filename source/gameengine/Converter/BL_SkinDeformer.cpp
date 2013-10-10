@@ -306,15 +306,10 @@ bool BL_SkinDeformer::UpdateInternal(bool shape_applied)
 
 		m_armobj->ApplyPose();
 
-		switch (m_armobj->GetVertDeformType())
-		{
-			case ARM_VDEF_BGE_CPU:
-				BGEDeformVerts();
-				break;
-			case ARM_VDEF_BLENDER:
-			default:
-				BlenderDeformVerts();
-		}
+		if (m_armobj->GetVertDeformType() == ARM_VDEF_BGE_CPU)
+			BGEDeformVerts();
+		else
+			BlenderDeformVerts();
 
 		/* Update the current frame */
 		m_lastArmaUpdate=m_armobj->GetLastFrame();
