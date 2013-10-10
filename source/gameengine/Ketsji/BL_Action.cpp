@@ -51,9 +51,15 @@ extern "C" {
 #include "DNA_material_types.h"
 }
 
+#include "MEM_guardedalloc.h"
+#include "BKE_library.h"
+#include "BKE_main.h"
+#include "BKE_global.h"
+
 BL_Action::BL_Action(class KX_GameObject* gameobj)
 :
 	m_action(NULL),
+	m_tmpaction(NULL),
 	m_blendpose(NULL),
 	m_blendinpose(NULL),
 	m_obj(gameobj),
@@ -81,6 +87,11 @@ BL_Action::~BL_Action()
 	if (m_blendinpose)
 		BKE_pose_free(m_blendinpose);
 	ClearControllerList();
+
+	if (m_tmpaction) {
+		BKE_libblock_free(&G.main->action, m_tmpaction);
+		m_tmpaction = NULL;
+	}
 }
 
 void BL_Action::ClearControllerList()
@@ -135,6 +146,13 @@ bool BL_Action::Play(const char* name,
 	if (!IsDone() && m_action == prev_action && m_startframe == start && m_endframe == end
 			&& m_priority == priority && m_speed == playback_speed)
 		return false;
+
+	// Keep a copy of the action for threading purposes
+	if (m_tmpaction) {
+		BKE_libblock_free(&G.main->action, m_tmpaction);
+		m_tmpaction = NULL;
+	}
+	m_tmpaction = BKE_action_copy(m_action);
 
 	// First get rid of any old controllers
 	ClearControllerList();
@@ -404,7 +422,7 @@ void BL_Action::Update(float curtime)
 			obj->GetPose(&m_blendpose);
 
 		// Extract the pose from the action
-		obj->SetPoseByAction(m_action, m_localtime);
+		obj->SetPoseByAction(m_tmpaction, m_localtime);
 
 		// Handle blending between armature actions
 		if (m_blendin && m_blendframe<m_blendin)
@@ -438,7 +456,7 @@ void BL_Action::Update(float curtime)
 			PointerRNA ptrrna;
 			RNA_id_pointer_create(&key->id, &ptrrna);
 
-			animsys_evaluate_action(&ptrrna, m_action, NULL, m_localtime);
+			animsys_evaluate_action(&ptrrna, m_tmpaction, NULL, m_localtime);
 
 			// Handle blending between shape actions
 			if (m_blendin && m_blendframe < m_blendin)
