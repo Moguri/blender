@@ -108,7 +108,6 @@ protected:
 	bool					m_poseApplied;
 	bool					m_recalcNormal;
 	bool					m_copyNormals; // dirty flag so we know if Apply() needs to copy normal information (used for BGEDeformVerts())
-	bool					m_doApply;
 	struct bPoseChannel**	m_dfnrToPC;
 	short					m_deformflags;
 
