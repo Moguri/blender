@@ -1604,7 +1604,8 @@ void KX_Scene::UpdateAnimations(double curtime)
 
 	#pragma omp parallel for
 	for (int i=0; i<m_animatedlist->GetCount(); ++i) {
-		KX_GameObject *gameobj;
+		KX_GameObject *gameobj, *child;
+		CListValue *children;
 		bool needs_update;
 
 		gameobj = (KX_GameObject*)m_animatedlist->GetValue(i);
@@ -1615,8 +1616,7 @@ void KX_Scene::UpdateAnimations(double curtime)
 		if (!needs_update) {
 			// If we got here, we're looking to update an armature, so check its children meshes
 			// to see if we need to bother with a more expensive pose update
-			CListValue *children = gameobj->GetChildren();
-			KX_GameObject *child;
+			children = gameobj->GetChildren();
 
 			bool has_mesh = false, has_non_mesh = false;
 
@@ -1644,25 +1644,19 @@ void KX_Scene::UpdateAnimations(double curtime)
 			children->Release();
 		}
 
-		if (needs_update)
+		if (needs_update) {
 			gameobj->UpdateActionManager(curtime);
-	}
+			children = gameobj->GetChildren();
 
-	#pragma omp parallel for
-	for (int i=0; i<m_animatedlist->GetCount(); ++i) {
-		KX_GameObject *gameobj = (KX_GameObject*)m_animatedlist->GetValue(i);
+			for (int j=0; j<children->GetCount(); ++j) {
+				child = (KX_GameObject*)children->GetValue(j);
 
-		CListValue *children = gameobj->GetChildren();
-		KX_GameObject *child;
+				if (child->GetDeformer())
+					child->GetDeformer()->Update();
+			}
 
-		for (int j=0; j<children->GetCount(); ++j) {
-			child = (KX_GameObject*)children->GetValue(j);
-
-			if (child->GetDeformer())
-				child->GetDeformer()->Update();
+			children->Release();
 		}
-
-		children->Release();
 	}
 
 	BLI_end_threaded_malloc();
