@@ -1278,83 +1278,75 @@ static short animsys_remap_path(AnimMapper *UNUSED(remap), char *path, char **ds
 /* less then 1.0 evaluates to false, use epsilon to avoid float error */
 #define ANIMSYS_FLOAT_AS_BOOL(value) ((value) > ((1.0f - FLT_EPSILON)))
 
-/* Write the given value to a setting using RNA, and return success */
-static short animsys_write_rna_setting(PointerRNA *ptr, char *path, int array_index, float value)
+static short intern_write_rna_setting (PointerRNA *ptr, char *path, int array_index, float value, PropertyRNA *prop, PointerRNA new_ptr)
 {
-	PropertyRNA *prop;
-	PointerRNA new_ptr;
-	
-	//printf("%p %s %i %f\n", ptr, path, array_index, value);
-	
-	/* get property to write to */
-	if (RNA_path_resolve_property(ptr, path, &new_ptr, &prop)) {
-		/* set value - only for animatable numerical values */
-		if (RNA_property_animateable(&new_ptr, prop)) {
-			int array_len = RNA_property_array_length(&new_ptr, prop);
+	/* set value - only for animatable numerical values */
+	if (RNA_property_animateable(&new_ptr, prop)) {
+		int array_len= RNA_property_array_length(&new_ptr, prop);
 			int written = FALSE;
 			
-			if (array_len && array_index >= array_len) {
-				if (G.debug & G_DEBUG) {
-					printf("Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d\n",
-					       (ptr && ptr->id.data) ? (((ID *)ptr->id.data)->name + 2) : "<No ID>",
-					       path, array_index, array_len - 1);
-				}
-				
-				return 0;
+		if (array_len && array_index >= array_len) {
+			if (G.debug & G_DEBUG) {
+				printf("Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d \n",
+					(ptr && ptr->id.data) ? (((ID *)ptr->id.data)->name+2) : "<No ID>",
+					path, array_index, array_len-1);
 			}
+				
+			return 0;
+		}
 			
-			switch (RNA_property_type(prop)) {
-				case PROP_BOOLEAN:
-					if (array_len) {
-						if (RNA_property_boolean_get_index(&new_ptr, prop, array_index) != ANIMSYS_FLOAT_AS_BOOL(value)) {
-							RNA_property_boolean_set_index(&new_ptr, prop, array_index, ANIMSYS_FLOAT_AS_BOOL(value));
-							written = TRUE;
-						}
-					}
-					else {
-						if (RNA_property_boolean_get(&new_ptr, prop) != ANIMSYS_FLOAT_AS_BOOL(value)) {
-							RNA_property_boolean_set(&new_ptr, prop, ANIMSYS_FLOAT_AS_BOOL(value));
-							written = TRUE;
-						}
-					}
-					break;
-				case PROP_INT:
-					if (array_len) {
-						if (RNA_property_int_get_index(&new_ptr, prop, array_index) != (int)value) {
-							RNA_property_int_set_index(&new_ptr, prop, array_index, (int)value);
-							written = TRUE;
-						}
-					}
-					else {
-						if (RNA_property_int_get(&new_ptr, prop) != (int)value) {
-							RNA_property_int_set(&new_ptr, prop, (int)value);
-							written = TRUE;
-						}
-					}
-					break;
-				case PROP_FLOAT:
-					if (array_len) {
-						if (RNA_property_float_get_index(&new_ptr, prop, array_index) != value) {
-							RNA_property_float_set_index(&new_ptr, prop, array_index, value);
-							written = TRUE;
-						}
-					}
-					else {
-						if (RNA_property_float_get(&new_ptr, prop) != value) {
-							RNA_property_float_set(&new_ptr, prop, value);
-							written = TRUE;
-						}
-					}
-					break;
-				case PROP_ENUM:
-					if (RNA_property_enum_get(&new_ptr, prop) != (int)value) {
-						RNA_property_enum_set(&new_ptr, prop, (int)value);
+		switch (RNA_property_type(prop)) {
+			case PROP_BOOLEAN:
+				if (array_len) {
+					if (RNA_property_boolean_get_index(&new_ptr, prop, array_index) != ANIMSYS_FLOAT_AS_BOOL(value)) {
+						RNA_property_boolean_set_index(&new_ptr, prop, array_index, ANIMSYS_FLOAT_AS_BOOL(value));
 						written = TRUE;
 					}
-					break;
-				default:
-					/* nothing can be done here... so it is unsuccessful? */
-					return 0;
+				}
+				else {
+					if (RNA_property_boolean_get(&new_ptr, prop) != ANIMSYS_FLOAT_AS_BOOL(value)) {
+						RNA_property_boolean_set(&new_ptr, prop, ANIMSYS_FLOAT_AS_BOOL(value));
+						written = TRUE;
+					}
+				}
+				break;
+			case PROP_INT:
+				if (array_len) {
+					if (RNA_property_int_get_index(&new_ptr, prop, array_index) != (int)value) {
+						RNA_property_int_set_index(&new_ptr, prop, array_index, (int)value);
+						written = TRUE;
+					}
+				}
+				else {
+					if (RNA_property_int_get(&new_ptr, prop) != (int)value) {
+						RNA_property_int_set(&new_ptr, prop, (int)value);
+						written = TRUE;
+					}
+				}
+				break;
+			case PROP_FLOAT:
+				if (array_len) {
+					if (RNA_property_float_get_index(&new_ptr, prop, array_index) != value) {
+						RNA_property_float_set_index(&new_ptr, prop, array_index, value);
+						written = TRUE;
+					}
+				}
+				else {
+					if (RNA_property_float_get(&new_ptr, prop) != value) {
+						RNA_property_float_set(&new_ptr, prop, value);
+						written = TRUE;
+					}
+				}
+				break;
+			case PROP_ENUM:
+				if (RNA_property_enum_get(&new_ptr, prop) != (int)value) {
+					RNA_property_enum_set(&new_ptr, prop, (int)value);
+					written = TRUE;
+				}
+				break;
+			default:
+				/* nothing can be done here... so it is unsuccessful? */
+				return 0;
 			}
 			
 			/* RNA property update disabled for now - [#28525] [#28690] [#28774] [#28777] */
@@ -1363,18 +1355,18 @@ static short animsys_write_rna_setting(PointerRNA *ptr, char *path, int array_in
 			if (written && RNA_property_update_check(prop)) {
 				short skip_updates_hack = 0;
 				
-				/* optimization hacks: skip property updates for those properties
-				 * for we know that which the updates in RNA were really just for
-				 * flushing property editing via UI/Py
-				 */
-				if (new_ptr.type == &RNA_PoseBone) {
-					/* bone transforms - update pose (i.e. tag depsgraph) */
-					skip_updates_hack = 1;
-				}
-				
-				if (skip_updates_hack == 0)
-					RNA_property_update_cache_add(&new_ptr, prop);
+			/* optimization hacks: skip property updates for those properties
+				* for we know that which the updates in RNA were really just for
+				* flushing property editing via UI/Py
+				*/
+			if (new_ptr.type == &RNA_PoseBone) {
+				/* bone transforms - update pose (i.e. tag depsgraph) */
+				skip_updates_hack = 1;
 			}
+				
+			if (skip_updates_hack == 0)
+				RNA_property_update_cache_add(&new_ptr, prop);
+		}
 #endif
 
 			/* as long as we don't do property update, we still tag datablock
@@ -1391,22 +1383,66 @@ static short animsys_write_rna_setting(PointerRNA *ptr, char *path, int array_in
 				}
 			}
 		}
-		
-		/* successful */
-		return 1;
 	}
-	else {
+		
+	/* successful */
+	return 1;
+}
+
+/* Write the given value to a setting using RNA, and return success */
+static short animsys_write_rna_setting (PointerRNA *ptr, char *path, int array_index, float value)
+{
+	PropertyRNA *prop;
+	PointerRNA new_ptr;
+
+	/* get property to write to */
+	if (RNA_path_resolve(ptr, path, &new_ptr, &prop))
+	{
+		return intern_write_rna_setting(ptr, path, array_index, value, prop, new_ptr);
+	}
+	else
+	{
 		/* failed to get path */
 		/* XXX don't tag as failed yet though, as there are some legit situations (Action Constraint)
 		 * where some channels will not exist, but shouldn't lock up Action */
 		if (G.debug & G_DEBUG) {
-			printf("Animato: Invalid path. ID = '%s',  '%s[%d]'\n",
-			       (ptr && ptr->id.data) ? (((ID *)ptr->id.data)->name + 2) : "<No ID>",
-			       path, array_index);
+			printf("Animato: Invalid path. ID = '%s',  '%s[%d]' \n",
+				(ptr && ptr->id.data) ? (((ID *)ptr->id.data)->name+2) : "<No ID>", 
+				path, array_index);
 		}
 		return 0;
 	}
 }
+
+/* Write the given array of values to a setting using RNA, and return success */
+static short animsys_write_rna_setting_array (PointerRNA *ptr, char *path, int array_size, FCurve **curves)
+{
+	PropertyRNA *prop;
+	PointerRNA new_ptr;
+	int i, success=0;
+
+	if (RNA_path_resolve(ptr, path, &new_ptr, &prop))
+	{
+		for (i=0; i<array_size; ++i)
+		{
+				success |= intern_write_rna_setting(ptr, path, i, curves[i]->curval, prop, new_ptr);
+		}
+
+		return success;
+	}
+	else {
+		/* failed to get path */
+		// XXX don't tag as failed yet though, as there are some legit situations (Action Constraint) 
+		// where some channels will not exist, but shouldn't lock up Action
+		if (G.f & G_DEBUG) {
+			printf("Animato: Invalid path. ID = '%s',  '%s' \n",
+				(ptr && ptr->id.data) ? (((ID *)ptr->id.data)->name+2) : "<No ID>", 
+				path);
+		}
+		return 0;
+	}
+};
+
 
 /* Simple replacement based data-setting of the FCurve using RNA */
 static short animsys_execute_fcurve(PointerRNA *ptr, AnimMapper *remap, FCurve *fcu)
@@ -1435,8 +1471,57 @@ static short animsys_execute_fcurve(PointerRNA *ptr, AnimMapper *remap, FCurve *
  */
 static void animsys_evaluate_fcurves(PointerRNA *ptr, ListBase *list, AnimMapper *remap, float ctime)
 {
-	FCurve *fcu;
+	FCurve *fcu = list->first;
+
+#if 1
+	char *path;
+	char *rpath;
+	short free_path=0;
 	
+	while (fcu)
+	{	
+		/* check if this F-Curve doesn't belong to a muted group */
+		if ((fcu->grp == NULL) || (fcu->grp->flag & AGRP_MUTED)==0) {
+			/* check if this curve should be skipped */
+			if ((fcu->flag & (FCURVE_MUTED|FCURVE_DISABLED)) == 0) 
+			{
+				FCurve *curves[4] = {NULL};
+				int num_curves = 1;
+
+				path = fcu->rna_path;
+		
+				calculate_fcurve(fcu, ctime);
+				curves[0] = fcu;
+
+				/* We want to store fcurves with the same paths together so we can update an array value in one go instead of 3~4 passes.
+				 * This reduces RNA lookups, which can get spendy. This should work since FCurves are stored in order.
+				 * If there are more than 4 matching curves, they will be split up into chunks of 4 max. This shouldn't be too common.
+				 */
+				while (fcu->next && strcmp(fcu->next->rna_path, path)==0 && num_curves < 4)
+				{
+					fcu = fcu->next;
+					calculate_fcurve(fcu, ctime);
+					curves[num_curves++] = fcu;
+				}
+
+
+				/* get path, remapped as appropriate to work in its new environment */
+				free_path = animsys_remap_path(remap, path, &rpath);
+
+				if (rpath)
+				{
+					animsys_write_rna_setting_array(ptr, rpath, num_curves, curves);
+				}
+
+				if (free_path)
+					MEM_freeN(rpath);
+			}
+		}
+
+		fcu = fcu->next;
+	}
+#else
+
 	/* calculate then execute each curve */
 	for (fcu = list->first; fcu; fcu = fcu->next) {
 		/* check if this F-Curve doesn't belong to a muted group */
@@ -1448,6 +1533,7 @@ static void animsys_evaluate_fcurves(PointerRNA *ptr, ListBase *list, AnimMapper
 			}
 		}
 	}
+#endif
 }
 
 /* ***************************************** */
