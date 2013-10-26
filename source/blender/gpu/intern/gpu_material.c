@@ -97,6 +97,7 @@ struct GPUMaterial {
 	int viewmatloc, invviewmatloc;
 	int obmatloc, invobmatloc;
 	int obcolloc, obautobumpscaleloc;
+	int useshwskinloc;
 
 	ListBase lamps;
 };
@@ -224,6 +225,8 @@ static int GPU_material_construct_end(GPUMaterial *material)
 			material->obcolloc = GPU_shader_get_uniform(shader, GPU_builtin_name(GPU_OBCOLOR));
 		if (material->builtins & GPU_AUTO_BUMPSCALE)
 			material->obautobumpscaleloc = GPU_shader_get_uniform(shader, GPU_builtin_name(GPU_AUTO_BUMPSCALE));
+
+		material->useshwskinloc = GPU_shader_get_uniform(shader, "useshwskin");
 		return 1;
 	}
 
@@ -341,6 +344,9 @@ void GPU_material_bind_uniforms(GPUMaterial *material, float obmat[4][4], float 
 		if (material->builtins & GPU_AUTO_BUMPSCALE) {
 			GPU_shader_uniform_vector(shader, material->obautobumpscaleloc, 1, 1, &autobumpscale);
 		}
+
+		// This is enabled later as needed
+		GPU_shader_uniform_int(shader, material->useshwskinloc, 0);
 	}
 }
 
@@ -360,6 +366,11 @@ int GPU_material_bound(GPUMaterial *material)
 Scene *GPU_material_scene(GPUMaterial *material)
 {
 	return material->scene;
+}
+
+GPUShader *GPU_material_shader(GPUMaterial *material)
+{
+	return GPU_pass_shader(material->pass);
 }
 
 void GPU_material_vertex_attributes(GPUMaterial *material, GPUVertexAttribs *attribs)

@@ -34,10 +34,14 @@
 
 #include "RAS_TexVert.h"
 #include "CTR_Map.h"
+#include "STR_HashedString.h"
 #include "SG_QList.h"
 
 #include "MT_Transform.h"
 #include "MT_Matrix4x4.h"
+#include "RAS_IPolygonMaterial.h"
+#include "RAS_IRasterizer.h"
+#include "RAS_Deformer.h"
 
 #include <vector>
 #include <set>
@@ -50,6 +54,7 @@ class RAS_Deformer;
 class RAS_IPolyMaterial;
 class RAS_IRasterizer;
 class RAS_MeshObject;
+class RAS_Deformer;
 
 using namespace std;
 

@@ -64,6 +64,8 @@ typedef vector<KX_IndexArray *> vecIndexArrays;
  */
 class RAS_IRasterizer
 {
+private:
+	void* m_shader;
 public:
 	enum RAS_TEXT_RENDER_MODE {
 		RAS_TEXT_RENDER_NODEF = 0,
@@ -72,8 +74,8 @@ public:
 		RAS_TEXT_MAX,
 	};
 
-	RAS_IRasterizer(RAS_ICanvas* canv) {};
-	virtual ~RAS_IRasterizer() {};
+	RAS_IRasterizer(RAS_ICanvas* canv) {m_shader=0;}
+	virtual ~RAS_IRasterizer() {}
 
 	/**
 	 * Drawing types
@@ -269,6 +271,7 @@ public:
 
 	/**
 	 * IndexPrimitives_3DText will render text into the polygons.
+	 * The text to be rendered is from \param rendertools client object's text property.
 	 */
 	virtual void IndexPrimitives_3DText(class RAS_MeshSlot &ms, class RAS_IPolyMaterial *polymat) = 0;
  
@@ -421,6 +424,9 @@ public:
 
 	virtual void SetUsingOverrideShader(bool val) = 0;
 	virtual bool GetUsingOverrideShader() = 0;
+
+	void	SetCurrentProgram(void *val) {m_shader = val;}
+	void*	GetCurrentProgram() {return m_shader;}
 
 	/**
 	 * Render Tools

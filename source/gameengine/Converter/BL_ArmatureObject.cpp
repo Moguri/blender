@@ -228,6 +228,7 @@ BL_ArmatureObject::BL_ArmatureObject(
 	m_channelNumber(0),
 	m_lastapplyframe(0.0)
 {
+	//m_vert_deform_type = ARM_VDEF_BGE_GPU;
 	m_objArma = BKE_object_copy(armature);
 	m_objArma->data = BKE_armature_copy((bArmature *)armature->data);
 	m_pose = m_objArma->pose;

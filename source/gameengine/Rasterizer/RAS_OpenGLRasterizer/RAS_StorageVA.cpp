@@ -163,6 +163,9 @@ void RAS_StorageVA::IndexPrimitivesMulti(class RAS_MeshSlot& ms)
 		glVertexPointer(3, GL_FLOAT, stride, it.vertex->getXYZ());
 		glNormalPointer(GL_FLOAT, stride, it.vertex->getNormal());
 
+		if (ms.m_pDeformer)
+			ms.m_pDeformer->BeginHandleGPUAttribs(it.array);
+
 		if (!wireframe) {
 			TexCoordPtr(it.vertex);
 			if (use_color_array)
@@ -171,6 +174,9 @@ void RAS_StorageVA::IndexPrimitivesMulti(class RAS_MeshSlot& ms)
 
 		// here the actual drawing takes places
 		glDrawElements(drawmode, it.totindex, GL_UNSIGNED_SHORT, it.index);
+
+		if (ms.m_pDeformer)
+			ms.m_pDeformer->EndHandleGPUAttribs();
 	}
 	
 	glDisableClientState(GL_VERTEX_ARRAY);

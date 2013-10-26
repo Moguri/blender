@@ -45,6 +45,9 @@
 
 struct DerivedMesh;
 class RAS_MeshObject;
+class RAS_MeshSlot;
+class RAS_IRasterizer;
+class RAS_DisplayArray;
 
 class RAS_Deformer
 {
@@ -88,6 +91,10 @@ public:
 		return NULL;
 	}
 	virtual float (* GetTransVerts(int *tot))[3]	{	*tot= 0; return NULL; }
+
+	virtual void HandleGPUUniforms(RAS_IRasterizer *rasty, RAS_MeshSlot& ms) {};
+	virtual void BeginHandleGPUAttribs(RAS_DisplayArray *array) {};
+	virtual void EndHandleGPUAttribs() {};
 
 protected:
 	class RAS_MeshObject	*m_pMesh;

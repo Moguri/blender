@@ -63,6 +63,11 @@ extern "C"{
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 
+#include "GPU_material.h"
+#include "GPU_extensions.h"
+
+#include <GL/glew.h>
+
 #define __NLA_DEFNORMALS
 //#undef __NLA_DEFNORMALS
 
@@ -96,7 +101,8 @@ BL_SkinDeformer::BL_SkinDeformer(BL_DeformableGameObject *gameobj,
 							m_poseApplied(false),
 							m_recalcNormal(true),
 							m_copyNormals(false),
-							m_dfnrToPC(NULL)
+							m_dfnrToPC(NULL),
+							m_poseMatrices(NULL)
 {
 	copy_m4_m4(m_obmat, bmeshobj->obmat);
 	m_deformflags = get_deformflags(bmeshobj);
@@ -117,7 +123,8 @@ BL_SkinDeformer::BL_SkinDeformer(
 		m_releaseobject(release_object),
 		m_recalcNormal(recalc_normal),
 		m_copyNormals(false),
-		m_dfnrToPC(NULL)
+		m_dfnrToPC(NULL),
+		m_poseMatrices(NULL)
 	{
 		// this is needed to ensure correct deformation of mesh:
 		// the deformation is done with Blender's armature_deform_verts() function
@@ -134,6 +141,14 @@ BL_SkinDeformer::~BL_SkinDeformer()
 		m_armobj->Release();
 	if (m_dfnrToPC)
 		delete [] m_dfnrToPC;
+	if (m_poseMatrices)
+		delete [] m_poseMatrices;
+
+	map<void*, SkinVertData*>::iterator it;
+	for (it = m_skinVertData.begin(); it != m_skinVertData.end(); ++it) {
+		delete [] it->second;
+	}
+	m_skinVertData.clear();
 }
 
 void BL_SkinDeformer::Relink(CTR_Map<class CTR_HashedPtr, void*>*map)
@@ -153,7 +168,9 @@ void BL_SkinDeformer::Relink(CTR_Map<class CTR_HashedPtr, void*>*map)
 bool BL_SkinDeformer::Apply(RAS_IPolyMaterial *mat)
 {
 	// We do everything in UpdateInternal() now so we can thread it.
-	return false;
+	bool tmp = m_bDynamic;
+	m_bDynamic = false;
+	return tmp;
 }
 
 RAS_Deformer *BL_SkinDeformer::GetReplica()
@@ -291,7 +308,10 @@ bool BL_SkinDeformer::UpdateInternal(bool shape_applied)
 {
 	/* See if the armature has been updated for this frame */
 	if (PoseUpdated()) {
+		int vert_deformer = m_armobj->GetVertDeformType();
 
+
+		if (vert_deformer != ARM_VDEF_BGE_GPU)
 		if (!shape_applied) {
 			/* store verts locally */
 			VerifyStorage();
@@ -306,9 +326,9 @@ bool BL_SkinDeformer::UpdateInternal(bool shape_applied)
 
 		m_armobj->ApplyPose();
 
-		if (m_armobj->GetVertDeformType() == ARM_VDEF_BGE_CPU)
+		if (vert_deformer == ARM_VDEF_BGE_CPU)
 			BGEDeformVerts();
-		else
+		else if (vert_deformer == ARM_VDEF_BLENDER)
 			BlenderDeformVerts();
 
 		/* Update the current frame */
@@ -316,14 +336,14 @@ bool BL_SkinDeformer::UpdateInternal(bool shape_applied)
 
 		m_armobj->RestorePose();
 		/* dynamic vertex, cannot use display list */
-		m_bDynamic = true;
+		m_bDynamic = vert_deformer != ARM_VDEF_BGE_GPU;
 		/* indicate that the m_transverts and normals are up to date */
 		RAS_MeshSlot::iterator it;
 		RAS_MeshMaterial *mmat;
 		RAS_MeshSlot *slot;
 		size_t i, nmat, imat;
 
-		if (m_transverts) {
+		if (m_bDynamic && m_transverts) {
 			// the vertex cache is unique to this deformer, no need to update it
 			// if it wasn't updated! We must update all the materials at once
 			// because we will not get here again for the other material
@@ -367,4 +387,104 @@ void BL_SkinDeformer::SetArmature(BL_ArmatureObject *armobj)
 {
 	// only used to set the object now
 	m_armobj = armobj;
+}
+
+void BL_SkinDeformer::HandleGPUUniforms(RAS_IRasterizer *rasty, RAS_MeshSlot &ms)
+{
+	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU)
+		return;
+
+	int defbase_tot = BLI_countlist(&m_objMesh->defbase);
+
+	if (m_dfnrToPC == NULL)
+	{
+		bDeformGroup *dg;
+		Object *par_arma = m_armobj->GetArmatureObject();
+
+		m_dfnrToPC = new bPoseChannel*[defbase_tot];
+		m_poseMatrices = new float[16*defbase_tot];
+
+		int i;
+		for (i=0, dg=(bDeformGroup*)m_objMesh->defbase.first;
+			dg;
+			++i, dg = dg->next)
+		{
+			m_dfnrToPC[i] = BKE_pose_channel_find_name(par_arma->pose, dg->name);
+
+			if (m_dfnrToPC[i] && m_dfnrToPC[i]->bone->flag & BONE_NO_DEFORM)
+				m_dfnrToPC[i] = NULL;
+		}
+	}
+
+	for (int i = 0; i < defbase_tot; ++i) {
+		if (m_dfnrToPC[i] != NULL)
+			memcpy(m_poseMatrices+(i*16), m_dfnrToPC[i]->chan_mat, 16*sizeof(float));
+	}
+
+
+	GPUShader* shader = (GPUShader*)rasty->GetCurrentProgram();
+	m_shader = shader;
+
+	int loc = GPU_shader_get_uniform(shader, "useshwskin");
+	GPU_shader_uniform_int(shader, loc, 1);
+
+	loc = GPU_shader_get_uniform(shader, "bonematrices");
+	GPU_shader_uniform_vector(shader, loc, 16, defbase_tot, m_poseMatrices);
+}
+
+
+void BL_SkinDeformer::BeginHandleGPUAttribs(RAS_DisplayArray *array)
+{
+	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU)
+		return;
+
+	SkinVertData *skinverts = m_skinVertData[array];
+
+	if (skinverts == NULL) {
+		m_skinVertData[array] = skinverts = new SkinVertData[array->m_vertex.size()];
+
+		vector<RAS_TexVert>::iterator vit;
+		int i = 0;
+		for (vit = array->m_vertex.begin(); vit != array->m_vertex.end(); ++i, ++vit) {
+			MDeformVert* dv = &m_bmesh->dvert[vit->getOrigIndex()];
+			MDeformWeight *dw = dv->dw;
+
+			skinverts[i].num_bones = dv->totweight;
+			if (skinverts[i].num_bones > 4) {
+				//printf("More than four bone influences found for vert: %d\n", dv->totweight);
+				skinverts[i].num_bones = 4;
+			}
+
+			for (int j = 0; j < dv->totweight && j < 4; ++j, ++dw) {
+				skinverts[i].indexes[j] = dw->def_nr;
+				skinverts[i].weights[j] = dw->weight;
+			}
+		}
+	}
+
+	int loc = GPU_shader_get_attribute(m_shader, "weight");
+	glEnableVertexAttribArray(loc);
+	glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, sizeof(SkinVertData), skinverts[0].weights);
+
+	loc = GPU_shader_get_attribute(m_shader, "index");
+	glEnableVertexAttribArray(loc);
+	glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, sizeof(SkinVertData), skinverts[0].indexes);
+
+	loc = GPU_shader_get_attribute(m_shader, "numbones");
+	glEnableVertexAttribArray(loc);
+	glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, sizeof(SkinVertData), &skinverts[0].num_bones);
+}
+
+void BL_SkinDeformer::EndHandleGPUAttribs() {
+	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU)
+		return;
+
+	int loc = GPU_shader_get_attribute(m_shader, "weight");
+	glDisableVertexAttribArray(loc);
+
+	loc = GPU_shader_get_attribute(m_shader, "index");
+	glDisableVertexAttribArray(loc);
+
+	loc = GPU_shader_get_attribute(m_shader, "numbones");
+	glDisableVertexAttribArray(loc);
 }
