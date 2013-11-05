@@ -56,6 +56,7 @@ struct SkinVertData {
 class BL_SkinDeformer : public BL_MeshDeformer  
 {
 public:
+
 //	void SetArmatureController (BL_ArmatureController *cont);
 	virtual void Relink(CTR_Map<class CTR_HashedPtr, void*>*map);
 	void SetArmature (class BL_ArmatureObject *armobj);
@@ -127,7 +128,7 @@ protected:
 
 	void BlenderDeformVerts();
 	void BGEDeformVerts();
-
+	void VerifyHardwareSkinning();
 
 #ifdef WITH_CXX_GUARDEDALLOC
 	MEM_CXX_CLASS_ALLOC_FUNCS("GE:BL_SkinDeformer")

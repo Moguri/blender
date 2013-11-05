@@ -49,7 +49,7 @@ class MT_Matrix4x4;
 struct Object;
 class KX_BlenderSceneConverter;
 
-class BL_ArmatureObject : public KX_GameObject  
+class BL_ArmatureObject : public KX_GameObject
 {
 	Py_Header
 public:
@@ -88,6 +88,7 @@ public:
 	Object* GetArmatureObject() {return m_objArma;}
 
 	int GetVertDeformType() {return m_vert_deform_type;}
+	void SetVertDeformType(int deform_type);
 
 	// for constraint python API
 	void LoadConstraints(KX_BlenderSceneConverter* converter);

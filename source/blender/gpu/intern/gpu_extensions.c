@@ -84,6 +84,7 @@ typedef struct GPUShaders {
 static struct GPUGlobal {
 	GLint maxtexsize;
 	GLint maxtextures;
+	GLint maxvertexcomponents;
 	GLuint currentfb;
 	int glslsupport;
 	int extdisabled;
@@ -117,6 +118,11 @@ int GPU_max_texture_size(void)
 	return GG.maxtexsize;
 }
 
+int GPU_max_vertex_uniform_components(void)
+{
+	return GG.maxvertexcomponents;
+}
+
 void GPU_extensions_init(void)
 {
 	GLint r, g, b;
@@ -135,6 +141,8 @@ void GPU_extensions_init(void)
 		glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &GG.maxtextures);
 
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &GG.maxtexsize);
+
+	glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &GG.maxvertexcomponents);
 
 	GG.glslsupport = 1;
 	if (!GLEW_ARB_multitexture) GG.glslsupport = 0;
@@ -209,6 +217,11 @@ void GPU_extensions_init(void)
 			GG.npotdisabled = 1;
 			GG.dlistsdisabled = 1;
 		}
+
+		/* AMD/ATI cards need GL_MAX_*_UNIFORM_COMPONENTS divided by 4:
+		 * https://www.opengl.org/wiki_132/index.php?title=GLSL_Uniform#Implementation_limits
+		 */
+		GG.maxvertexcomponents /= 4;
 	}
 
 	/* make sure double side isn't used by default and only getting enabled in places where it's
