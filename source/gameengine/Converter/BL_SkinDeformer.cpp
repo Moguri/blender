@@ -417,6 +417,9 @@ void BL_SkinDeformer::HandleGPUUniforms(RAS_IRasterizer *rasty, RAS_MeshSlot &ms
 	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU)
 		return;
 
+	GPUShader* shader = (GPUShader*)rasty->GetCurrentProgram();
+	m_shader = shader;
+
 	int defbase_tot = BLI_countlist(&m_objMesh->defbase);
 
 	if (m_dfnrToPC == NULL)
@@ -437,6 +440,9 @@ void BL_SkinDeformer::HandleGPUUniforms(RAS_IRasterizer *rasty, RAS_MeshSlot &ms
 			if (m_dfnrToPC[i] && m_dfnrToPC[i]->bone->flag & BONE_NO_DEFORM)
 				m_dfnrToPC[i] = NULL;
 		}
+
+		m_shaderLocations["useshwskin"] = GPU_shader_get_uniform(shader, "useshwskin");
+		m_shaderLocations["bonematrices"] = GPU_shader_get_uniform(shader, "bonematrices");
 	}
 
 	for (int i = 0; i < defbase_tot; ++i) {
@@ -444,15 +450,8 @@ void BL_SkinDeformer::HandleGPUUniforms(RAS_IRasterizer *rasty, RAS_MeshSlot &ms
 			memcpy(m_poseMatrices+(i*16), m_dfnrToPC[i]->chan_mat, 16*sizeof(float));
 	}
 
-
-	GPUShader* shader = (GPUShader*)rasty->GetCurrentProgram();
-	m_shader = shader;
-
-	int loc = GPU_shader_get_uniform(shader, "useshwskin");
-	GPU_shader_uniform_int(shader, loc, 1);
-
-	loc = GPU_shader_get_uniform(shader, "bonematrices");
-	GPU_shader_uniform_vector(shader, loc, 16, defbase_tot, m_poseMatrices);
+	GPU_shader_uniform_int(shader, m_shaderLocations["useshwskin"], 1);
+	GPU_shader_uniform_vector(shader, m_shaderLocations["bonematrices"], 16, defbase_tot, m_poseMatrices);
 }
 
 
@@ -514,17 +513,21 @@ void BL_SkinDeformer::BeginHandleGPUAttribs(RAS_DisplayArray *array)
 				memcpy(skinverts[i].weights, weights, 4*sizeof(float));
 			}
 		}
+
+		m_shaderLocations["weight"] = GPU_shader_get_attribute(m_shader, "weight");
+		m_shaderLocations["index"] = GPU_shader_get_attribute(m_shader, "index");
+		m_shaderLocations["numbones"] = GPU_shader_get_attribute(m_shader, "numbones");
 	}
 
-	int loc = GPU_shader_get_attribute(m_shader, "weight");
+	int loc = m_shaderLocations["weight"];
 	glEnableVertexAttribArray(loc);
 	glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, sizeof(SkinVertData), skinverts[0].weights);
 
-	loc = GPU_shader_get_attribute(m_shader, "index");
+	loc = m_shaderLocations["index"];
 	glEnableVertexAttribArray(loc);
 	glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, sizeof(SkinVertData), skinverts[0].indexes);
 
-	loc = GPU_shader_get_attribute(m_shader, "numbones");
+	loc = m_shaderLocations["numbones"];
 	glEnableVertexAttribArray(loc);
 	glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, sizeof(SkinVertData), &skinverts[0].num_bones);
 }

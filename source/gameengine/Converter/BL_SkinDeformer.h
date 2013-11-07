@@ -125,6 +125,7 @@ protected:
 	std::map<void*, SkinVertData*>	m_skinVertData;
 	float*					m_poseMatrices;
 	struct GPUShader*		m_shader;
+	std::map<const char*, int>	m_shaderLocations;
 
 	void BlenderDeformVerts();
 	void BGEDeformVerts();
