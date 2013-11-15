@@ -536,12 +536,12 @@ void BL_SkinDeformer::EndHandleGPUAttribs() {
 	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU)
 		return;
 
-	int loc = GPU_shader_get_attribute(m_shader, "weight");
+	int loc = m_shaderLocations["weight"];
 	glDisableVertexAttribArray(loc);
 
-	loc = GPU_shader_get_attribute(m_shader, "index");
+	loc = m_shaderLocations["index"];
 	glDisableVertexAttribArray(loc);
 
-	loc = GPU_shader_get_attribute(m_shader, "numbones");
+	loc = m_shaderLocations["numbones"];
 	glDisableVertexAttribArray(loc);
 }
