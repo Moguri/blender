@@ -190,9 +190,7 @@ void BL_SkinDeformer::Relink(CTR_Map<class CTR_HashedPtr, void*>*map)
 bool BL_SkinDeformer::Apply(RAS_IPolyMaterial *mat)
 {
 	// We do everything in UpdateInternal() now so we can thread it.
-	bool tmp = m_bDynamic;
-	m_bDynamic = false;
-	return tmp;
+	return PoseUpdated() && m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU;
 }
 
 RAS_Deformer *BL_SkinDeformer::GetReplica()
