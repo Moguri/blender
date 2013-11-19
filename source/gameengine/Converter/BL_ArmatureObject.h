@@ -86,6 +86,7 @@ public:
 	const struct Scene * GetScene() const { return m_scene; }
 	
 	Object* GetArmatureObject() {return m_objArma;}
+	Object* GetOrigArmatureObject() {return m_origObjArma;}
 
 	int GetVertDeformType() {return m_vert_deform_type;}
 	void SetVertDeformType(int deform_type);
@@ -127,6 +128,7 @@ protected:
 	/* list element: BL_ArmatureChannel. Use SG_DList to avoid list replication */
 	SG_DList			m_poseChannels;
 	Object				*m_objArma;
+	Object				*m_origObjArma;
 	struct bPose		*m_pose;
 	struct bPose		*m_armpose;
 	struct Scene		*m_scene; // need for BKE_pose_where_is 

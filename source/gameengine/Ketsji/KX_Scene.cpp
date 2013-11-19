@@ -1198,7 +1198,7 @@ void KX_Scene::ReplaceMesh(class CValue* obj,void* meshobj, bool use_gfx, bool u
 						static_cast<BL_ArmatureObject*>( parentobj )
 					);
 					releaseParent= false;
-					modifierDeformer->LoadShapeDrivers(blendobj->parent);
+					modifierDeformer->LoadShapeDrivers(parentobj);
 				}
 				else
 				{
@@ -1226,7 +1226,7 @@ void KX_Scene::ReplaceMesh(class CValue* obj,void* meshobj, bool use_gfx, bool u
 						static_cast<BL_ArmatureObject*>( parentobj )
 					);
 					releaseParent= false;
-					shapeDeformer->LoadShapeDrivers(blendobj->parent);
+					shapeDeformer->LoadShapeDrivers(parentobj);
 				}
 				else
 				{
