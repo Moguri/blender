@@ -418,6 +418,9 @@ void BL_SkinDeformer::HandleGPUUniforms(RAS_IRasterizer *rasty, RAS_MeshSlot &ms
 	GPUShader* shader = (GPUShader*)rasty->GetCurrentProgram();
 	m_shader = shader;
 
+	if (!shader)
+		return;
+
 	int defbase_tot = BLI_countlist(&m_objMesh->defbase);
 
 	if (m_dfnrToPC == NULL)
@@ -455,7 +458,7 @@ void BL_SkinDeformer::HandleGPUUniforms(RAS_IRasterizer *rasty, RAS_MeshSlot &ms
 
 void BL_SkinDeformer::BeginHandleGPUAttribs(RAS_DisplayArray *array)
 {
-	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU)
+	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU || !m_shader)
 		return;
 
 	SkinVertData *skinverts = m_skinVertData[array];
@@ -531,7 +534,7 @@ void BL_SkinDeformer::BeginHandleGPUAttribs(RAS_DisplayArray *array)
 }
 
 void BL_SkinDeformer::EndHandleGPUAttribs() {
-	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU)
+	if (m_armobj->GetVertDeformType() != ARM_VDEF_BGE_GPU || !m_shader)
 		return;
 
 	int loc = m_shaderLocations["weight"];
