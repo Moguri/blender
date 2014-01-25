@@ -44,7 +44,6 @@
 #include "BKE_armature.h"
 #include "BKE_object.h"
 #include "BKE_library.h"
-#include "BKE_main.h"
 #include "BKE_global.h"
 
 extern "C" {
@@ -247,7 +246,7 @@ BL_ArmatureObject::~BL_ArmatureObject()
 	}
 
 	if (m_objArma)
-		BKE_libblock_free(&G.main->object, m_objArma);
+		BKE_libblock_free(G.main, m_objArma);
 }
 
 

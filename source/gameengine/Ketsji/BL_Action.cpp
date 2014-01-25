@@ -53,7 +53,6 @@ extern "C" {
 
 #include "MEM_guardedalloc.h"
 #include "BKE_library.h"
-#include "BKE_main.h"
 #include "BKE_global.h"
 
 BL_Action::BL_Action(class KX_GameObject* gameobj)
@@ -89,7 +88,7 @@ BL_Action::~BL_Action()
 	ClearControllerList();
 
 	if (m_tmpaction) {
-		BKE_libblock_free(&G.main->action, m_tmpaction);
+		BKE_libblock_free(G.main, m_tmpaction);
 		m_tmpaction = NULL;
 	}
 }
@@ -149,7 +148,7 @@ bool BL_Action::Play(const char* name,
 
 	// Keep a copy of the action for threading purposes
 	if (m_tmpaction) {
-		BKE_libblock_free(&G.main->action, m_tmpaction);
+		BKE_libblock_free(G.main, m_tmpaction);
 		m_tmpaction = NULL;
 	}
 	m_tmpaction = BKE_action_copy(m_action);
