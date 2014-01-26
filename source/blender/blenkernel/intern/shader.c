@@ -88,7 +88,7 @@ void BKE_shader_free(Shader *sh)
 struct Shader *BKE_shader_add(const char *name)
 {
 	Shader *sh;
-	sh = BKE_libblock_alloc(&G.main->shader, ID_SH, name);
+	sh = BKE_libblock_alloc(G.main, ID_SH, name);
 	init_shader(sh);
 	return sh;
 }
