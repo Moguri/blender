@@ -148,6 +148,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_sequencer.h"
+#include "BKE_shader.h"
 #include "BKE_text.h" // for txt_extended_ascii_as_utf8
 #include "BKE_texture.h"
 #include "BKE_tracking.h"
@@ -3488,6 +3489,7 @@ static void lib_link_material(FileData *fd, Main *main)
 {
 	Material *ma;
 	MTex *mtex;
+	ShaderLink *link;
 	int a;
 	
 	for (ma = main->mat.first; ma; ma = ma->id.next) {
@@ -3513,6 +3515,10 @@ static void lib_link_material(FileData *fd, Main *main)
 				lib_link_ntree(fd, &ma->id, ma->nodetree);
 				ma->nodetree->id.lib = ma->id.lib;
 			}
+
+			for (link = ma->custom_shaders.first; link; link = link->next) {
+				link->shader = newlibadr_us(fd, ma->id.lib, link->shader);
+			}
 			
 			ma->id.flag -= LIB_NEED_LINK;
 		}
@@ -3529,6 +3535,8 @@ static void direct_link_material(FileData *fd, Material *ma)
 	for (a = 0; a < MAX_MTEX; a++) {
 		ma->mtex[a] = newdataadr(fd, ma->mtex[a]);
 	}
+
+	link_list(fd, &ma->custom_shaders);
 	
 	ma->ramp_col = newdataadr(fd, ma->ramp_col);
 	ma->ramp_spec = newdataadr(fd, ma->ramp_spec);
@@ -3541,6 +3549,45 @@ static void direct_link_material(FileData *fd, Material *ma)
 	
 	ma->preview = direct_link_preview_image(fd, ma->preview);
 	BLI_listbase_clear(&ma->gpumaterial);
+}
+
+/* ************ READ SHADER ***************** */
+static void lib_link_shader(FileData *fd, Main *main)
+{
+	Shader *sh;
+	Uniform *uni;
+	for (sh = main->shader.first; sh; sh = sh->id.next) {
+		if (sh->id.flag & LIB_NEED_LINK) {
+			/* Link ID Properties -- and copy this comment EXACTLY for easy finding
+			 * of library blocks that implement this.*/
+			if (sh->id.properties) IDP_LibLinkProperty(sh->id.properties, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
+
+			sh->sourcetext = newlibadr_us(fd, sh->id.lib, sh->sourcetext);
+			for (uni = sh->uniforms.first; uni; uni = uni->next) {
+				if (uni->type == SHADER_UNF_SAMPLER2D)
+					 uni->data = newlibadr(fd, sh->id.lib, uni->data);
+			}
+
+			BKE_shader_read_source(sh, main);
+			sh->id.flag -= LIB_NEED_LINK;
+		}
+	}
+}
+
+static void direct_link_shader(FileData *fd, Shader *sh)
+{
+	Uniform *uni;
+
+	link_list(fd, &sh->uniforms);
+	sh->uniform_cache = BLI_ghash_str_new("Uniform Cache");
+	sh->source = NULL;
+
+	for (uni = sh->uniforms.first; uni; uni = uni->next) {
+		if (uni->type != SHADER_UNF_FLOAT &&
+				uni->type != SHADER_UNF_INT &&
+				uni->type != SHADER_UNF_SAMPLER2D)
+			uni->data = newdataadr(fd, uni->data);
+	}
 }
 
 /* ************ READ PARTICLE SETTINGS ***************** */
@@ -7308,6 +7355,9 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, int flag, ID
 		case ID_LS:
 			direct_link_linestyle(fd, (FreestyleLineStyle *)id);
 			break;
+		case ID_SH:
+			direct_link_shader(fd, (Shader *)id);
+			break;
 	}
 	
 	oldnewmap_free_unused(fd->datamap);
@@ -7479,6 +7529,7 @@ static void lib_link_all(FileData *fd, Main *main)
 	lib_link_curve(fd, main);
 	lib_link_mball(fd, main);
 	lib_link_material(fd, main);
+	lib_link_shader(fd, main);
 	lib_link_texture(fd, main);
 	lib_link_image(fd, main);
 	lib_link_ipo(fd, main);		// XXX deprecated... still needs to be maintained for version patches still
@@ -8039,6 +8090,7 @@ static void expand_brush(FileData *fd, Main *mainvar, Brush *brush)
 
 static void expand_material(FileData *fd, Main *mainvar, Material *ma)
 {
+	ShaderLink *link;
 	int a;
 	
 	for (a = 0; a < MAX_MTEX; a++) {
@@ -8050,6 +8102,10 @@ static void expand_material(FileData *fd, Main *mainvar, Material *ma)
 	
 	expand_doit(fd, mainvar, ma->ipo); // XXX deprecated - old animation system
 	
+	for (link = ma->custom_shaders.first; link; link = link->next) {
+		expand_doit(fd, mainvar, link->shader);
+	}
+
 	if (ma->adt)
 		expand_animdata(fd, mainvar, ma->adt);
 	

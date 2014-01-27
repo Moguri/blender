@@ -2038,6 +2038,7 @@ static void write_textures(WriteData *wd, ListBase *idbase)
 static void write_materials(WriteData *wd, ListBase *idbase)
 {
 	Material *ma;
+	ShaderLink *link;
 	int a;
 
 	ma= idbase->first;
@@ -2068,8 +2069,44 @@ static void write_materials(WriteData *wd, ListBase *idbase)
 			}
 
 			write_previews(wd, ma->preview);
+
+			for (link = ma->custom_shaders.first; link; link = link->next) {
+				writestruct(wd, DATA, "ShaderLink", 1, link);
+				writestruct(wd, DATA, "Shader", 1, link->shader);
+			}
 		}
 		ma= ma->id.next;
+	}
+}
+
+static void write_shaders(WriteData *wd, ListBase *idbase)
+{
+	Shader *sh;
+	Uniform *uni;
+
+	for (sh = idbase->first; sh; sh = sh->id.next) {
+		if (sh->id.us>0 || wd->current) {
+			/* write LibData */
+			writestruct(wd, ID_SH, "Shader", 1, sh);
+			writestruct(wd, ID_TXT, "Text", 1, sh->sourcetext);
+
+			for (uni = sh->uniforms.first; uni; uni = uni->next) {
+				writestruct(wd, DATA, "Uniform", 1, uni);
+				switch (uni->type)
+				{
+					case SHADER_UNF_VEC2:
+					case SHADER_UNF_VEC3:
+					case SHADER_UNF_VEC4:
+						writedata(wd, DATA, sizeof(float) * uni->size, uni->data);
+						break;
+					case SHADER_UNF_IVEC2:
+					case SHADER_UNF_IVEC3:
+					case SHADER_UNF_IVEC4:
+						writedata(wd, DATA, sizeof(int) * uni->size, uni->data);
+						break;
+				}
+			}
+		}
 	}
 }
 
@@ -3390,6 +3427,7 @@ static int write_file_handle(Main *mainvar, int handle, MemFile *compare, MemFil
 	write_scripts  (wd, &mainvar->script);
 	write_gpencils (wd, &mainvar->gpencil);
 	write_linestyles(wd, &mainvar->linestyle);
+	write_shaders(wd, &mainvar->shader);
 	write_libraries(wd,  mainvar->next);
 
 	if (write_user_block) {
