@@ -200,10 +200,25 @@ static int GPU_material_construct_end(GPUMaterial *material)
 	if (material->outlink) {
 		GPUNodeLink *outlink;
 		GPUShader *shader;
+		char *fragcode = NULL;
+		char *vertcode = NULL;
+		ShaderLink *link;
+
+		link = material->ma->custom_shaders.first;
+		for (; link; link = link->next) {
+			Shader *sh = link->shader;
+			if (!sh) continue;
+
+			if (sh->type == SHADER_TYPE_VERTEX)
+				vertcode = sh->source;
+			else if (sh->type == SHADER_TYPE_FRAGMENT)
+				fragcode = sh->source;
+		}
 
 		outlink = material->outlink;
 		material->pass = GPU_generate_pass(&material->nodes, outlink,
-			&material->attribs, &material->builtins, material->ma->id.name);
+			&material->attribs, &material->builtins, fragcode, vertcode,
+			material->ma->id.name);
 
 		if (!material->pass)
 			return 0;
