@@ -203,8 +203,11 @@ static int GPU_material_construct_end(GPUMaterial *material)
 		char *fragcode = NULL;
 		char *vertcode = NULL;
 		ShaderLink *link;
+		ListBase *usernodes;
 
 		link = material->ma->custom_shaders.first;
+		outlink = material->outlink;
+		usernodes = MEM_callocN(sizeof(ListBase), "Custom Uniform Nodes");
 		for (; link; link = link->next) {
 			Shader *sh = link->shader;
 			if (!sh) continue;
@@ -213,10 +216,10 @@ static int GPU_material_construct_end(GPUMaterial *material)
 				vertcode = sh->source;
 			else if (sh->type == SHADER_TYPE_FRAGMENT)
 				fragcode = sh->source;
-		}
 
-		outlink = material->outlink;
-		material->pass = GPU_generate_pass(&material->nodes, outlink,
+			GPU_add_custom_uniforms(usernodes, &sh->uniforms, outlink);
+		}
+		material->pass = GPU_generate_pass(&material->nodes, usernodes, outlink,
 			&material->attribs, &material->builtins, fragcode, vertcode,
 			material->ma->id.name);
 

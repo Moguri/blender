@@ -174,7 +174,8 @@ struct GPUPass {
 
 typedef struct GPUPass GPUPass;
 
-GPUPass *GPU_generate_pass(ListBase *nodes, struct GPUNodeLink *outlink,
+void GPU_add_custom_uniforms(ListBase *nodes, ListBase *uniforms, GPUNodeLink *outlink);
+GPUPass *GPU_generate_pass(ListBase *nodes, ListBase *usernodes, struct GPUNodeLink *outlink,
 	struct GPUVertexAttribs *attribs, int *builtin, char *fragmentcode,
 	char *vertexcode, const char *name);
 

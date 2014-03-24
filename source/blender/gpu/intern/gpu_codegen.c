@@ -38,6 +38,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_image_types.h"
 #include "DNA_material_types.h"
+#include "DNA_shader_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
@@ -756,10 +757,13 @@ static void GPU_nodes_extract_dynamic_inputs(GPUPass *pass, ListBase *nodes)
 				continue;
 			}
 
-			if (input->ima || input->tex || input->prv)
-				BLI_snprintf(input->shadername, sizeof(input->shadername), "samp%d", input->texid);
-			else
-				BLI_snprintf(input->shadername, sizeof(input->shadername), "unf%d", input->id);
+			/* generate shader name if it is invalid*/
+			if (BLI_strcasecmp(input->shadername, "") == 0) {
+				if (input->ima || input->tex || input->prv)
+					BLI_snprintf(input->shadername, sizeof(input->shadername), "samp%d", input->texid);
+				else
+					BLI_snprintf(input->shadername, sizeof(input->shadername), "unf%d", input->id);
+			}
 
 			/* pass non-dynamic uniforms to opengl */
 			extract = 0;
@@ -1348,6 +1352,42 @@ int GPU_link_changed(GPUNodeLink *link)
 		return 0;
 }
 
+static GPUNodeLink* gpu_link_from_dna_uniform(Uniform *uniform)
+{
+	switch (uniform->type) {
+	case SHADER_UNF_FLOAT:	return GPU_dynamic_uniform(&uniform->data, GPU_FLOAT, NULL);
+	case SHADER_UNF_VEC2:	return GPU_dynamic_uniform(uniform->data, GPU_VEC2, NULL);
+	case SHADER_UNF_VEC3:	return GPU_dynamic_uniform(uniform->data, GPU_VEC3, NULL);
+	case SHADER_UNF_VEC4:	return GPU_dynamic_uniform(uniform->data, GPU_VEC4, NULL);
+	default:	return NULL;
+	}
+}
+
+void GPU_add_custom_uniforms(ListBase *nodes, ListBase *uniforms, GPUNodeLink *outlink)
+{
+	Uniform *unf;
+	GPUNode *node;
+	GPUNodeLink *link;
+	GPUInput *input;
+
+	for (unf = uniforms->first; unf; unf = unf->next) {
+
+		link = gpu_link_from_dna_uniform(unf);
+
+		if (!link) continue;
+
+		node = GPU_node_begin(unf->name);
+		gpu_node_input_link(node, link, link->dynamictype);
+
+		input = node->inputs.first;
+		BLI_strcpy_rlen(input->shadername, unf->name);
+
+		GPU_node_end(node);
+
+		BLI_addtail(nodes, node);
+	}
+}
+
 /* Pass create/free */
 
 static void gpu_nodes_tag(GPUNodeLink *link)
@@ -1387,8 +1427,8 @@ static void gpu_nodes_prune(ListBase *nodes, GPUNodeLink *outlink)
 	}
 }
 
-GPUPass *GPU_generate_pass(ListBase *nodes, GPUNodeLink *outlink, GPUVertexAttribs *attribs, int *builtins,
-	char *infcode, char *invcode, const char *name)
+GPUPass *GPU_generate_pass(ListBase *nodes, ListBase *usernodes, GPUNodeLink *outlink, GPUVertexAttribs *attribs,
+	int *builtins, char *infcode, char *invcode, const char *name)
 {
 	GPUShader *shader;
 	GPUPass *pass;
@@ -1402,6 +1442,9 @@ GPUPass *GPU_generate_pass(ListBase *nodes, GPUNodeLink *outlink, GPUVertexAttri
 
 	/* prune unused nodes */
 	gpu_nodes_prune(nodes, outlink);
+
+	/* add user nodes*/
+	BLI_movelisttolist(nodes, usernodes);
 
 	gpu_nodes_get_vertex_attributes(nodes, attribs);
 	gpu_nodes_get_builtin_flag(nodes, builtins);
