@@ -3489,7 +3489,7 @@ static void lib_link_material(FileData *fd, Main *main)
 {
 	Material *ma;
 	MTex *mtex;
-	ShaderLink *link;
+	LinkData *link;
 	int a;
 	
 	for (ma = main->mat.first; ma; ma = ma->id.next) {
@@ -3517,7 +3517,7 @@ static void lib_link_material(FileData *fd, Main *main)
 			}
 
 			for (link = ma->custom_shaders.first; link; link = link->next) {
-				link->shader = newlibadr_us(fd, ma->id.lib, link->shader);
+				link->data = newlibadr_us(fd, ma->id.lib, link->data);
 			}
 			
 			ma->id.flag -= LIB_NEED_LINK;
@@ -8090,7 +8090,7 @@ static void expand_brush(FileData *fd, Main *mainvar, Brush *brush)
 
 static void expand_material(FileData *fd, Main *mainvar, Material *ma)
 {
-	ShaderLink *link;
+	LinkData *link;
 	int a;
 	
 	for (a = 0; a < MAX_MTEX; a++) {
@@ -8103,7 +8103,7 @@ static void expand_material(FileData *fd, Main *mainvar, Material *ma)
 	expand_doit(fd, mainvar, ma->ipo); // XXX deprecated - old animation system
 	
 	for (link = ma->custom_shaders.first; link; link = link->next) {
-		expand_doit(fd, mainvar, link->shader);
+		expand_doit(fd, mainvar, link->data);
 	}
 
 	if (ma->adt)

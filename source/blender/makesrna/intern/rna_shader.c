@@ -73,8 +73,8 @@ static void rna_Shader_source_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 
 static void rna_ShaderLink_name_get(struct PointerRNA *ptr, char *str)
 {
-	ShaderLink *link = (ShaderLink *)ptr->data;
-	Shader *shader = link->shader;
+	LinkData *link = (LinkData *)ptr->data;
+	Shader *shader = (Shader *)link->data;
 	if (shader)
 		strcpy(str, shader->id.name+2);
 	else
@@ -83,8 +83,8 @@ static void rna_ShaderLink_name_get(struct PointerRNA *ptr, char *str)
 
 static int rna_ShaderLink_name_length(struct PointerRNA *ptr)
 {
-	ShaderLink *link = (ShaderLink *)ptr->data;
-	Shader *shader = link->shader;
+	LinkData *link = (LinkData *)ptr->data;
+	Shader *shader = (Shader *)link->data;
 	if (shader)
 		return strlen(shader->id.name+2);
 	return 0;

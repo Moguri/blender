@@ -60,12 +60,6 @@ typedef struct Shader {
 	struct GHash *uniform_cache;
 } Shader;
 
-typedef struct ShaderLink {
-	struct ShaderLink *next, *prev;
-	struct Shader *shader;
-} ShaderLink;
-
-
 /* type */
 #define SHADER_TYPE_VERTEX		0
 #define SHADER_TYPE_FRAGMENT	1

@@ -202,14 +202,14 @@ static int GPU_material_construct_end(GPUMaterial *material)
 		GPUShader *shader;
 		char *fragcode = NULL;
 		char *vertcode = NULL;
-		ShaderLink *link;
+		LinkData *link;
 		ListBase *usernodes;
 
 		link = material->ma->custom_shaders.first;
 		outlink = material->outlink;
 		usernodes = MEM_callocN(sizeof(ListBase), "Custom Uniform Nodes");
 		for (; link; link = link->next) {
-			Shader *sh = link->shader;
+			Shader *sh = (Shader*)link->data;
 			if (!sh) continue;
 
 			if (sh->type == SHADER_TYPE_VERTEX)
