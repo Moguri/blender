@@ -98,8 +98,10 @@ bool	 KX_TouchEventManager::newBroadphaseResponse(void *client_data,
 	bool has_py_callbacks = false;
 
 	// Consider callbacks for broadphase inclusion if it's a sensor object type
+#ifdef WITH_PYTHON
 	if (gobj1 && gobj2)
 		has_py_callbacks = gobj1->m_collisionCallbacks || gobj2->m_collisionCallbacks;
+#endif
 
 	switch (info1->m_type)
 	{

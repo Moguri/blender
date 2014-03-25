@@ -190,6 +190,8 @@ void KX_RasterizerDrawDebugCircle(const MT_Vector3& center, const MT_Scalar radi
 		gp_Rasterizer->DrawDebugCircle(center, radius, color, normal, nsector);
 }
 
+struct PyNextFrameState pynextframestate;
+
 #ifdef WITH_PYTHON
 
 static PyObject *gp_OrigPythonSysPath= NULL;
@@ -818,7 +820,6 @@ static PyObject *gLibList(PyObject *, PyObject *args)
 	return list;
 }
 
-struct PyNextFrameState pynextframestate;
 static PyObject *gPyNextFrame(PyObject *)
 {
 	if (pynextframestate.func == NULL) Py_RETURN_NONE;
