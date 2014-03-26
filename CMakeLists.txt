@@ -585,10 +585,22 @@ if(UNIX AND NOT APPLE)
 		endif()
 	endmacro()
 
-	find_package_wrapper(JPEG REQUIRED)
-	find_package_wrapper(PNG REQUIRED)
-	find_package_wrapper(ZLIB REQUIRED)
-	find_package_wrapper(Freetype REQUIRED)
+	if(EMSCRIPTEN)
+		message(STATUS "Emscripten detected")
+		set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/emscripten)
+
+		set(JPEG "${LIBDIR}/jpeg")
+		set(JPEG_INCLUDE_DIR "${JPEG}/include")
+		set(JPEG_LIBPATH ${JPEG}/lib)
+		set(JPEG_LIBRARIES ${JPEG_LIBPATH}/libjpeg.a)
+	else()
+		message(STATUS ${CMAKE_FIND_ROOT_PATH})
+
+		find_package_wrapper(JPEG REQUIRED)
+		find_package_wrapper(PNG REQUIRED)
+		find_package_wrapper(ZLIB REQUIRED)
+		find_package_wrapper(Freetype REQUIRED)
+	endif()
 
 	if(WITH_PYTHON)
 		# No way to set py34. remove for now.
@@ -1992,6 +2004,9 @@ elseif(CMAKE_OSX_ARCHITECTURES MATCHES i386 OR CMAKE_OSX_ARCHITECTURES MATCHES x
 	add_definitions(-D__LITTLE_ENDIAN__)
 elseif(CMAKE_OSX_ARCHITECTURES MATCHES ppc OR CMAKE_OSX_ARCHITECTURES MATCHES ppc64)		
 	add_definitions(-D__BIG_ENDIAN__)
+
+elseif(EMSCRIPTEN)
+	add_definitions(-D_LITTLE_ENDIAN__)
 	
 else()
 	include(TestBigEndian)
@@ -2022,7 +2037,12 @@ endif()
 
 #-----------------------------------------------------------------------------
 # Configure OpenGL.
+if(EMSCRIPTEN)
+set(OPENGL_gl_LIBRARY "")
+set(OPENGL_glu_LIBRARY "")
+else()
 find_package(OpenGL)
+endif()
 blender_include_dirs_sys("${OPENGL_INCLUDE_DIR}")
 # unset(OPENGL_LIBRARIES CACHE) # not compat with older cmake
 # unset(OPENGL_xmesa_INCLUDE_DIR CACHE) # not compat with older cmake
