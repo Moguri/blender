@@ -2038,7 +2038,6 @@ static void write_textures(WriteData *wd, ListBase *idbase)
 static void write_materials(WriteData *wd, ListBase *idbase)
 {
 	Material *ma;
-	LinkData *link;
 	int a;
 
 	ma= idbase->first;
@@ -2070,10 +2069,7 @@ static void write_materials(WriteData *wd, ListBase *idbase)
 
 			write_previews(wd, ma->preview);
 
-			for (link = ma->custom_shaders.first; link; link = link->next) {
-				writestruct(wd, DATA, "LinkData", 1, link);
-				writestruct(wd, DATA, "Shader", 1, link->data);
-			}
+			writestruct(wd, DATA, "Shader", 1, ma->custom_shader);
 		}
 		ma= ma->id.next;
 	}
@@ -2083,12 +2079,16 @@ static void write_shaders(WriteData *wd, ListBase *idbase)
 {
 	Shader *sh;
 	Uniform *uni;
+	unsigned int i;
 
 	for (sh = idbase->first; sh; sh = sh->id.next) {
 		if (sh->id.us>0 || wd->current) {
 			/* write LibData */
 			writestruct(wd, ID_SH, "Shader", 1, sh);
-			writestruct(wd, ID_TXT, "Text", 1, sh->sourcetext);
+
+			for (i = 0; i < SHADER_SRC_MAX; ++i) {
+				writestruct(wd, ID_TXT, "Text", 1, sh->sources[i].textptr);
+			}
 
 			for (uni = sh->uniforms.first; uni; uni = uni->next) {
 				writestruct(wd, DATA, "Uniform", 1, uni);

@@ -54,9 +54,7 @@
 
 void init_shader(Shader *sh)
 {
-	sh->source = NULL;
-	sh->type = SHADER_TYPE_FRAGMENT;
-	sh->location = SHADER_LOC_BUILTIN;
+	unsigned int i;
 
 	sh->uniforms.first = NULL;
 	sh->uniforms.last = NULL;
@@ -67,8 +65,12 @@ void init_shader(Shader *sh)
 void BKE_shader_lib_free(Shader *sh)
 {
 	Uniform *uni;
-	if (sh->source)
-		MEM_freeN(sh->source);
+	unsigned int i;
+
+	for (i = 0; i < SHADER_SRC_MAX; ++i) {
+		if (sh->sources[i].source)
+			MEM_freeN(sh->sources[i].source);
+	}
 	
 	for (uni = sh->uniforms.first; uni; uni = uni->next) {
 		if (uni->data && uni->size > 1)
@@ -100,92 +102,7 @@ struct Shader *BKE_shader_copy(Shader *sh)
 	return shn;
 }
 
-struct Shader *BKE_shader_empty()
-{
-	Shader *sh;
-	sh = MEM_mallocN(sizeof(Shader), "Empty Shader");
-	init_shader(sh);
-	return sh;
-}
-
-void BKE_shader_source_merge(Shader *dst, const Shader *src)
-{
-	DynStr *new_source;
-	char fname1[40] = "main\0";
-	char fname2[40] = "main\0";
-	char count[33];
-	char i = 0;
-	char *dst_main, *src_main, *search;
-
-	/* Handle a couple of NULL cases */
-	if (src->source == NULL)
-		return;
-
-	if (dst->source == NULL) {
-		dst->source = MEM_mallocN(strlen(src->source)+1, "Merged shader source");
-		strcpy(dst->source, src->source);
-		return;
-	}
-
-	/* Find main, and assume there is nothing after it */
-	dst_main = strstr(dst->source, "void main");
-	src_main = strstr(src->source, "void main");
-
-	if (!dst_main || ! src_main)
-		return;
-
-	new_source = BLI_dynstr_new();
-
-	/* Put the fluff into the new shader */
-	BLI_dynstr_nappend(new_source, dst->source, dst_main-dst->source);
-	BLI_dynstr_nappend(new_source, src->source, src_main-src->source);
-
-	/* Find a new name for the first main */
-	search = BLI_dynstr_get_cstring(new_source);
-	do {
-		sprintf(count, "%d", i++);
-		strcpy(fname1, "main");
-		strcat(fname1, count);
-	}while (search = strstr(dst->source, fname1));
-	search = BLI_dynstr_get_cstring(new_source);
-
-	/* Add the first main back in with new name */
-	while (*(dst_main++) != '(');
-	BLI_dynstr_appendf(new_source, "void %s %s", fname1, --dst_main);
-
-	/* Find a name for the second main */
-	do {
-		sprintf(count, "%d", i++);
-		strcpy(fname2, "main");
-		strcat(fname2, count);
-	}while (search = strstr(dst->source, fname2));
-
-	/* Add the second main back in with new name */
-	while (*(src_main++) != '(');
-	BLI_dynstr_appendf(new_source, "void %s %s", fname2, --src_main);
-
-	/* Build a new main function */
-	BLI_dynstr_appendf(new_source, "\nvoid main()\n{\t%s();\n\t%s();\n}", fname1, fname2);
-
-	/* Copy the DynStr back to dst->source and clean up*/
-	search = BLI_dynstr_get_cstring(new_source);
-	dst->source = MEM_mallocN(strlen(search)+1, "Merged shader source");
-	strcpy(dst->source, search);
-
-	BLI_dynstr_free(new_source);
-	MEM_freeN(search);
-}
-
 void gather_uniforms(Shader *sh);
-void BKE_shader_source_merge_ch(Shader *dst, const char *src)
-{
-	Shader *sh = BKE_shader_empty();
-	sh->source = MEM_mallocN(strlen(src)+1, "Shader merge temp");
-	strcpy(sh->source, src);
-	gather_uniforms(sh);
-	BKE_shader_source_merge(dst, sh);
-	BKE_shader_free(sh);
-}
 
 int starts_with(const char *str, const char *start)
 {
@@ -379,29 +296,34 @@ void extract_default(const char *src,  Uniform *uni)
 void gather_uniforms(Shader *sh)
 {
 	Uniform *uni;
-	char *src = sh->source;
+	char *src;
 	char *type, *name, *id;
+	unsigned int i;
 
-	if (!src)
-		return;
+	for (i = 0; i < SHADER_SRC_MAX; ++i) {
+		src = sh->sources[i].source;
 
-	while (src = strstr(src, "uniform")) {
-		src += 7;
-		type = extract_token(&src);
-		name = extract_token(&src);
-		id = BLI_strdupcat(name, type);
-        uni = (Uniform *)BLI_ghash_popkey(sh->uniform_cache, id, NULL);
-		if (!uni) {
-			uni = uniform_init(type, name);
-			while (*src++ != ';') {
-				if (*src == '=')
-					extract_default(src+1, uni);
+		if (!src)
+			continue;
+
+		while (src = strstr(src, "uniform")) {
+			src += 7;
+			type = extract_token(&src);
+			name = extract_token(&src);
+			id = BLI_strdupcat(name, type);
+			uni = (Uniform *)BLI_ghash_popkey(sh->uniform_cache, id, NULL);
+			if (!uni) {
+				uni = uniform_init(type, name);
+				while (*src++ != ';') {
+					if (*src == '=')
+						extract_default(src + 1, uni);
+				}
 			}
+			BLI_addtail(&sh->uniforms, uni);
+			MEM_freeN(type);
+			MEM_freeN(name);
+			MEM_freeN(id);
 		}
-		BLI_addtail(&sh->uniforms, uni);
-		MEM_freeN(type);
-		MEM_freeN(name);
-		MEM_freeN(id);
 	}
 
 }
@@ -409,17 +331,21 @@ void gather_uniforms(Shader *sh)
 void BKE_shader_read_source(Shader *sh, Main *main)
 {
 	Uniform *uni;
+	unsigned int i;
 
-	/* Clean up an previous source text */
-	if (sh->source) {
-		MEM_freeN(sh->source);
-		sh->source = NULL;
+	/* Clean up any previous source text */
+
+	for (i = 0; i < SHADER_SRC_MAX; ++i) {
+		if (sh->sources[i].source) {
+			MEM_freeN(sh->sources[i].source);
+			sh->sources[i].source = NULL;
+		}
+
+		if (sh->sources[i].flags & SHADERSRC_EXTERNAL)
+			sh->sources[i].source = file_to_buf(sh->sources[i].filepath, main);
+		else
+			sh->sources[i].source = txt_to_buf(sh->sources[i].textptr);
 	}
-
-	if (sh->location == SHADER_LOC_INTERNAL)
-		sh->source = txt_to_buf(sh->sourcetext);
-	else if (sh->location == SHADER_LOC_EXTERNAL)
-		sh->source = file_to_buf(sh->sourcepath, main);
 
 	/* Cache the uniform list and rebuild it */
 	for (uni = sh->uniforms.first; uni; uni = uni->next)
@@ -427,6 +353,5 @@ void BKE_shader_read_source(Shader *sh, Main *main)
 
 	sh->uniforms.first = sh->uniforms.last = NULL;
 
-	if (sh->source)
-		gather_uniforms(sh);
+	gather_uniforms(sh);
 }

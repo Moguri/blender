@@ -46,34 +46,35 @@ typedef struct Uniform {
 	void *data;
 } Uniform;
 
+enum {
+	SHADER_SRC_VERTEX = 0,
+	SHADER_SRC_FRAGMENT,
+	SHADER_SRC_MAX
+};
+
+typedef struct ShaderSource {
+	char filepath[240];
+	struct Text *textptr;
+	char *source;
+	unsigned int flags;
+	int pad;
+} ShaderSource;
+
 typedef struct Shader {
 	ID id;
-	char type;
-	char use;
-	char location;
-	char sourceenum;
-	char sourcepath[240];
-	int pad;
-	struct Text *sourcetext;
-	char *source;
+	ShaderSource sources[2];	/* Size should be SHADER_SRC_MAX, hard coded for makesdna*/
 	ListBase uniforms;
 	struct GHash *uniform_cache;
+	unsigned int flags;
+	int pad;
 } Shader;
 
-/* type */
-#define SHADER_TYPE_VERTEX		0
-#define SHADER_TYPE_FRAGMENT	1
+/* Shader flags */
+#define SHADER_FLAG_USE_VERTEX		(1<<0)
+#define SHADER_FLAG_USE_FRAGMENT	(1<<1)
 
-/* use */
-#define SHADER_USE_MATERIAL		0
-#define SHADER_USE_FILTER		1
-#define	SHADER_USE_GLOBAL		3
-#define SHADER_USE_GENERATED	4
-
-/* location */
-#define SHADER_LOC_BUILTIN	0
-#define SHADER_LOC_INTERNAL	1
-#define SHADER_LOC_EXTERNAL	2
+/* ShaderSource flags*/
+#define SHADERSRC_EXTERNAL	(1<<0)
 
 /* uniform types */
 #define SHADER_UNF_FLOAT	1

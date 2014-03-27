@@ -47,19 +47,16 @@ static void rna_Shader_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 	Shader *sh = ptr->id.data;
 	Material *ma;
-	CustomShader *cs;
 
 	DAG_id_tag_update(&sh->id, 0);
 
 	for (ma = bmain->mat.first; ma; ma = ma->id.next) {
-		for (cs = ma->custom_shaders.first; cs; cs = cs->next) {
-			if (strcmp(cs->shader->id.name, sh->id.name) == 0) {	
-				DAG_id_tag_update(&ma->id, 0);
-				if(scene->gm.matmode == GAME_MAT_GLSL)
-					WM_main_add_notifier(NC_MATERIAL|ND_SHADING_DRAW, ma);
-				else
-					WM_main_add_notifier(NC_MATERIAL|ND_SHADING, ma);
-			}
+		if (strcmp(ma->custom_shader->id.name, sh->id.name) == 0) {
+			DAG_id_tag_update(&ma->id, 0);
+			if(scene->gm.matmode == GAME_MAT_GLSL)
+				WM_main_add_notifier(NC_MATERIAL|ND_SHADING_DRAW, ma);
+			else
+				WM_main_add_notifier(NC_MATERIAL|ND_SHADING, ma);
 		}
 	}
 }
@@ -132,15 +129,6 @@ void rna_Shader_active_index_range(int *min, int *max, ListBase *list)
 {
 	*min = 0;
 	*max = MAX2(0, BLI_countlist(list) - 1);
-}
-
-int rna_Shader_id_poll(PointerRNA *ptr, PointerRNA value, char use)
-{
-	Shader *sh = (Shader *)value.id.data;
-	
-	if (sh->use == use)
-		return 1;
-	return 0;
 }
 
 static int rna_IntUniform_value_get(struct PointerRNA *ptr)
@@ -349,20 +337,38 @@ static void rna_def_shader_uniform(BlenderRNA *brna)
 	rna_def_uniformtype(brna, "Sampler2DUniform", "Custom sampler2D uniform", PROP_POINTER, PROP_NONE, 1);
 }
 
-static void rna_def_shader_shaderlink(BlenderRNA *brna)
+void RNA_def_shader_source(BlenderRNA *brna)
 {
 	StructRNA *srna;
 	PropertyRNA *prop;
 
-	srna = RNA_def_struct(brna, "ShaderLink", NULL);
-	RNA_def_struct_ui_icon(srna, ICON_TEXT);
-	RNA_def_struct_sdna(srna, "ShaderLink");
+	static EnumPropertyItem prop_shader_loc_items[] = {
+		{ 0, "INTERNAL", 0, "Internal", "Use text datablock for shader source" },
+		{ 1, "EXTERNAL", 0, "External", "Use external file for shader source" },
+		{ 0, NULL, 0, NULL, NULL }
+	};
 
-	prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-	RNA_def_struct_name_property(srna, prop);
-	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-	RNA_def_property_string_funcs(prop, "rna_ShaderLink_name_get", "rna_ShaderLink_name_length", NULL);
-	RNA_def_property_ui_text(prop, "Name", "The name of the shader");
+	srna = RNA_def_struct(brna, "ShaderSource", NULL);
+	RNA_def_struct_nested(brna, srna, "Shader");
+	RNA_def_struct_ui_text(srna, "ShaderSource", "Details about the shader's source");
+
+	prop = RNA_def_property(srna, "location_type", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "flags");
+	RNA_def_property_enum_items(prop, prop_shader_loc_items);
+	RNA_def_property_ui_text(prop, "Vertex Location Type", "How to interpret the location to the shader source");
+	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
+
+	prop = RNA_def_property(srna, "source_text", PROP_POINTER, PROP_NONE);
+	RNA_def_property_pointer_sdna(prop, NULL, "textptr");
+	RNA_def_property_struct_type(prop, "Text");
+	RNA_def_property_flag(prop, PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Source", "The shader text to use");
+	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
+
+	prop = RNA_def_property(srna, "source_path", PROP_STRING, PROP_FILEPATH);
+	RNA_def_property_string_sdna(prop, NULL, "filepath");
+	RNA_def_property_ui_text(prop, "Source", "The path to the shader to use");
+	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
 }
 
 void RNA_def_shader(BlenderRNA *brna)
@@ -370,52 +376,44 @@ void RNA_def_shader(BlenderRNA *brna)
 	StructRNA *srna;
 	PropertyRNA *prop;
 
-	static EnumPropertyItem prop_type_items[] = {
-		{SHADER_TYPE_VERTEX, "VERTEX", 0, "Vertex", "Use as vertex shader"},
-		{SHADER_TYPE_FRAGMENT, "FRAGMENT", 0, "Fragment", "Use as fragment shader"},
-		{0, NULL, 0, NULL, NULL}
-	};
-
 	static EnumPropertyItem prop_shader_loc_items[] = {
-		{SHADER_LOC_BUILTIN, "BUILTIN", 0, "Builtin", "Use a builtin shader"},
-		{SHADER_LOC_INTERNAL, "INTERNAL", 0, "Internal", "Use a shader from a text datablock"},
-		{SHADER_LOC_EXTERNAL, "EXTERNAL", 0, "External", "Use a shader from an external file"},
-		{0, NULL, 0, NULL, NULL}
+		{ 0, "INTERNAL", 0, "Internal", "Use text datablock for shader source" },
+		{ 1, "EXTERNAL", 0, "External", "Use external file for shader source" },
+		{ 0, NULL, 0, NULL, NULL }
 	};
 
 	srna = RNA_def_struct(brna, "Shader", "ID");
 	RNA_def_struct_ui_text(srna, "Shader", "Shader datablock to define custom shading for a material");
 	RNA_def_struct_ui_icon(srna, ICON_TEXT);
 
-	prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "type");
-	RNA_def_property_enum_items(prop, prop_type_items);
-	RNA_def_property_ui_text(prop, "Type", "Type of shader to use");
+	/* Use shader flags */
+	prop = RNA_def_property(srna, "use_vertex_shader", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", SHADER_FLAG_USE_VERTEX);
+	RNA_def_property_ui_text(prop, "Use Vertex Shader", "Enable the use of a vertex shader with this shader program");
 	RNA_def_property_update(prop, 0, "rna_Shader_update");
 
-	prop = RNA_def_property(srna, "shader_location", PROP_ENUM, PROP_NONE);
-	RNA_def_property_enum_sdna(prop, NULL, "location");
-	RNA_def_property_enum_items(prop, prop_shader_loc_items);
-	RNA_def_property_ui_text(prop, "Location", "Location of the shader to use");
-	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
+	prop = RNA_def_property(srna, "use_fragment_shader", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flags", SHADER_FLAG_USE_FRAGMENT);
+	RNA_def_property_ui_text(prop, "Use Fragment Shader", "Enable the use of a fragment shader with this shader program");
+	RNA_def_property_update(prop, 0, "rna_Shader_update");
 
-	prop = RNA_def_property(srna, "source_text", PROP_POINTER, PROP_NONE);
-	RNA_def_property_pointer_sdna(prop, NULL, "sourcetext");
-	RNA_def_property_struct_type(prop, "Text");
-	RNA_def_property_flag(prop, PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Source", "The shader text to use");
-	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
+	/* Shader sources */
+	prop = RNA_def_property(srna, "vertex_source", PROP_POINTER, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NEVER_NULL);
+	RNA_def_property_pointer_sdna(prop, NULL, "sources[0]");
+	RNA_def_property_struct_type(prop, "ShaderSource");
 
-	prop = RNA_def_property(srna, "source_path", PROP_STRING, PROP_FILEPATH);
-	RNA_def_property_string_sdna(prop, NULL, "sourcepath");
-	RNA_def_property_ui_text(prop, "Source", "The path to the shader to use");
-	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
+	prop = RNA_def_property(srna, "fragment_source", PROP_POINTER, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NEVER_NULL);
+	RNA_def_property_pointer_sdna(prop, NULL, "sources[1]");
+	RNA_def_property_struct_type(prop, "ShaderSource");
 
+	/* Uniforms */
 	prop = RNA_def_property(srna, "uniforms", PROP_COLLECTION, PROP_NONE);
 	RNA_def_property_collection_sdna(prop, NULL, "uniforms", NULL);
 	RNA_def_property_struct_type(prop, "Uniform");
 	RNA_def_property_ui_text(prop, "Custom Uniforms", "Uniform values to send to custom shaders");
 
 	rna_def_shader_uniform(brna);
-	rna_def_shader_shaderlink(brna);
+	RNA_def_shader_source(brna);
 }

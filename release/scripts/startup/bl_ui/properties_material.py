@@ -52,6 +52,10 @@ def simple_material(mat):
     return False
 
 
+def custom_shader(mat):
+    return mat.custom_shader and mat.use_custom_shader
+
+
 class MATERIAL_MT_sss_presets(Menu):
     bl_label = "SSS Presets"
     preset_subdir = "sss"
@@ -226,6 +230,83 @@ class MATERIAL_PT_pipeline(MaterialButtonsPanel, Panel):
         col.prop(mat, "use_cast_approximate")
         col.prop(mat, "pass_index")
 
+class MATERIAL_PT_shader(MaterialButtonsPanel, bpy.types.Panel):
+    bl_label = "Custom Shader"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_GAME'}
+
+    @classmethod
+    def poll(cls,context):
+        mat = context.material
+        engine = context.scene.render.engine
+        return mat and (mat.type in ('SURFACE', 'WIRE')) and (engine in cls.COMPAT_ENGINES)
+
+    def draw_header(self, context):
+        mat = context.material
+
+        self.layout.prop(mat, "use_custom_shader", text="")
+
+    def draw(self, context):
+        mat = context.material
+        layout = self.layout
+
+        layout.active = mat.use_custom_shader
+        mat = context.material
+        layout.template_ID(mat, "custom_shader", new="shader.new")
+
+        sh = mat.custom_shader
+        if sh:
+            for stype in ['vertex', 'fragment']:
+                layout.prop(sh, "use_%s_shader" % stype)
+                if getattr(sh, "use_%s_shader" % stype):
+                    source = getattr(sh, "%s_source" % stype)
+                    print(stype, source)
+                    layout.prop(source, "location_type", expand=True)
+                    if source.location_type == "INTERNAL":
+                        layout.prop(source, "source_text", text="")
+                    elif source.location_type == "EXTERNAL":
+                        layout.prop(source, "source_path", text="")
+
+
+class MATERIAL_PT_shader_settings(MaterialButtonsPanel, bpy.types.Panel):
+    bl_label = "Shader Settings"
+    COMPAT_ENGINES = {'BLENDER_GAME'}
+
+    @classmethod
+    def poll(cls,context):
+        mat = context.material
+        engine = context.scene.render.engine
+        return mat and (mat.type in ('SURFACE', 'WIRE')) \
+            and (engine in cls.COMPAT_ENGINES) and custom_shader(mat) \
+            and mat.custom_shader.uniforms
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+
+        mat = context.material
+        shader = mat.custom_shader
+
+        for uniform in shader.uniforms:
+            if hasattr(uniform, "value"):
+                reserved = uniform.name.startswith("bgl_")
+                if uniform.type in ("VEC2", "VEC3", "VEC4", "IVEC2", "IVEC3", "IVEC4"):
+                    if not reserved:
+                        layout.label(uniform.name + ":")
+                        row = layout.row()
+                        row.prop(uniform, "value", text="")
+                    else:
+                        layout.label(uniform.name)
+                else:
+                    row = layout.row()
+                    if not reserved:
+                        row.label(uniform.name + ":")
+                        row.prop(uniform, "value", text="")
+                    else:
+                        row.label(uniform.name)
+
+                layout.active = not reserved
+
 
 class MATERIAL_PT_diffuse(MaterialButtonsPanel, Panel):
     bl_label = "Diffuse"
@@ -235,7 +316,8 @@ class MATERIAL_PT_diffuse(MaterialButtonsPanel, Panel):
     def poll(cls, context):
         mat = context.material
         engine = context.scene.render.engine
-        return check_material(mat) and (mat.type in {'SURFACE', 'WIRE'}) and (engine in cls.COMPAT_ENGINES)
+        return check_material(mat) and (mat.type in {'SURFACE', 'WIRE'}) and \
+            (engine in cls.COMPAT_ENGINES) and not custom_shader(mat)
 
     def draw(self, context):
         layout = self.layout
@@ -292,7 +374,8 @@ class MATERIAL_PT_specular(MaterialButtonsPanel, Panel):
     def poll(cls, context):
         mat = context.material
         engine = context.scene.render.engine
-        return check_material(mat) and (mat.type in {'SURFACE', 'WIRE'}) and (engine in cls.COMPAT_ENGINES)
+        return check_material(mat) and (mat.type in {'SURFACE', 'WIRE'})\
+            and (engine in cls.COMPAT_ENGINES) and not custom_shader(mat)
 
     def draw(self, context):
         layout = self.layout
@@ -345,7 +428,8 @@ class MATERIAL_PT_shading(MaterialButtonsPanel, Panel):
     def poll(cls, context):
         mat = context.material
         engine = context.scene.render.engine
-        return check_material(mat) and (mat.type in {'SURFACE', 'WIRE'}) and (engine in cls.COMPAT_ENGINES)
+        return check_material(mat) and (mat.type in {'SURFACE', 'WIRE'})\
+            and (engine in cls.COMPAT_ENGINES) and not custom_shader(mat)
 
     def draw(self, context):
         layout = self.layout
@@ -632,71 +716,6 @@ class MATERIAL_PT_flare(MaterialButtonsPanel, Panel):
         col = split.column()
         col.prop(halo, "flare_subflare_count", text="Subflares")
         col.prop(halo, "flare_subflare_size", text="Subsize")
-
-
-class MATERIAL_PT_shaders(MaterialButtonsPanel, bpy.types.Panel):
-    bl_label = "Custom Shaders"
-    COMPAT_ENGINES = {'BLENDER_GAME'}
-
-    @classmethod
-    def poll(cls,context):
-        mat = context.material
-        engine = context.scene.render.engine
-        return mat and (mat.type in ('SURFACE', 'WIRE')) and (engine in cls.COMPAT_ENGINES)
-
-    def draw(self, context):
-        layout = self.layout
-        col = layout.column()
-
-        mat = active_node_mat(context.material)
-
-        row = layout.row()
-        col = row.column()
-        col.template_list("RENDER_PT_shaderslots", "", mat, "shaders",
-            mat, "active_shader_index", rows=2)
-        col.template_ID(mat, "active_shader", new="shader.new")
-        col = row.column(align=True)
-        col.operator("material.shader_add", icon='ZOOMIN', text="")
-        col.operator("material.shader_remove", icon='ZOOMOUT', text="").index = mat.active_shader_index
-
-        col = layout.column()
-
-        shader = mat.active_shader
-        if shader:
-            row = col.row()
-            row.prop(shader, "type", expand=True)
-
-            col.label("Source:")
-            row = col.row()
-            row.prop(shader, "shader_location", expand=True)
-            if shader.shader_location == "INTERNAL":
-                col.prop(shader, "source_text", text="")
-            elif shader.shader_location == "EXTERNAL":
-                col.prop(shader, "source_path", text="")
-
-            if shader.uniforms:
-                col.label("Uniforms:")
-
-            for uniform in shader.uniforms:
-                col = layout.column()
-                if hasattr(uniform, "value"):
-                    reserved = uniform.name.startswith("bgl_")
-                    if uniform.type in ("VEC2", "VEC3", "VEC4", "IVEC2", "IVEC3", "IVEC4"):
-                        if not reserved:
-                            col.label(uniform.name + ":")
-                            row = col.row()
-                            row.prop(uniform, "value", text="")
-                        else:
-                            col.label(uniform.name)
-                    else:
-                        row = col.row()
-                        if not reserved:
-                            row.label(uniform.name + ":")
-                            row.prop(uniform, "value", text="")
-                        else:
-                            row.label(uniform.name)
-
-                    col.active = not reserved
 
 
 class MATERIAL_PT_game_settings(MaterialButtonsPanel, Panel):

@@ -549,8 +549,6 @@ static int new_shader_exec(bContext *C, wmOperator *UNUSED(op))
 	else
 		sh = BKE_shader_add("Shader");
 
-	sh->use = SHADER_USE_MATERIAL;
-
 	/* hook into UI */
 	uiIDContextProperty(C, &ptr, &prop);
 
@@ -563,9 +561,6 @@ static int new_shader_exec(bContext *C, wmOperator *UNUSED(op))
 		RNA_property_pointer_set(&ptr, prop, idptr);
 		RNA_property_update(C, &ptr, prop);
 	}
-
-	//WM_event_add_notifier(C, NC_MATERIAL | NA_ADDED, ma);
-	ma->actshader = BLI_countlist(&ma->custom_shaders);
 
 	return OPERATOR_FINISHED;
 }
@@ -1544,78 +1539,6 @@ void TEXTURE_OT_envmap_clear_all(wmOperatorType *ot)
 	
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/********************** shader operators *********************/
-
-static int shader_add(ListBase *list, int *index, const char *malloc_str)
-{
-	LinkData *link = MEM_callocN(sizeof(LinkData), malloc_str);
-	BLI_addtail(list, link);
-	*index = BLI_countlist(list);
-
-	return OPERATOR_FINISHED;
-}
-
-static int shader_remove(wmOperator *op, ListBase *list, int *index)
-{
-	LinkData *link;
-	int i = RNA_int_get(op->ptr, "index");
-
-	link = BLI_findlink(list, i);
-
-	if(link) {
-		BLI_remlink(list, link);
-
-		if (i != 1 || BLI_countlist(list) == 1)
-			(*index)--;
-		return OPERATOR_FINISHED;
-	}
-	else {
-		return OPERATOR_CANCELLED;
-	}
-}
-
-static int shader_add_exec(bContext *C, wmOperator *UNUSED(op))
-{
-	Material *ma= CTX_data_pointer_get_type(C, "material", &RNA_Material).data;
-	return shader_add(&ma->custom_shaders, &ma->actshader, "New Custom Shader");
-}
-
-void MATERIAL_OT_shader_add(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name= "Add Shader";
-	ot->idname= "MATERIAL_OT_shader_add";
-	ot->description= "Add a new custom shader";
-
-	/* api callbacks */
-	ot->exec= shader_add_exec;
-
-	/* flags */
-	ot->flag= OPTYPE_REGISTER|OPTYPE_UNDO;
-}
-
-static int shader_remove_exec(bContext *C, wmOperator *op)
-{
-	Material *ma= CTX_data_pointer_get_type(C, "material", &RNA_Material).data;
-	return shader_remove(op, &ma->custom_shaders, &ma->actshader);
-}
-
-void MATERIAL_OT_shader_remove(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name= "Remove Shader";
-	ot->idname= "MATERIAL_OT_shader_remove";
-	ot->description = "Remove a custom shader";
-
-	/* api callbacks */
-	ot->exec= shader_remove_exec;
-
-	/* flags */
-	ot->flag= OPTYPE_REGISTER|OPTYPE_UNDO;
-
-	RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Shader index to remove ", 0, INT_MAX);
 }
 
 /********************** material operators *********************/

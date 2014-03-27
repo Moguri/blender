@@ -206,8 +206,7 @@ void init_material(Material *ma)
 	ma->shade_flag = MA_APPROX_OCCLUSION;
 	ma->preview = NULL;
 
-	ma->custom_shaders.first = NULL;
-	ma->custom_shaders.last = NULL;
+	ma->custom_shader = NULL;
 }
 
 Material *BKE_material_add(Main *bmain, const char *name)

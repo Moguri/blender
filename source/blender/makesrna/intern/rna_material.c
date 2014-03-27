@@ -382,61 +382,6 @@ void rna_mtex_texture_slots_clear(ID *self_id, struct bContext *C, ReportList *r
 	/* for redraw only */
 	WM_event_add_notifier(C, NC_TEXTURE, CTX_data_scene(C));
 }
-
-static PointerRNA rna_Material_active_shader_get(PointerRNA *ptr)
-{
-	Material *ma = (Material*)ptr->data;
-	return rna_Shader_active_get(ptr, &ma->custom_shaders, ma->actshader);
-}
-
-static void rna_Material_active_shader_set(PointerRNA *ptr, PointerRNA value)
-{
-	Material *ma = (Material*)ptr->data;
-	rna_Shader_active_set(value, &ma->custom_shaders, ma->actshader);
-}
-
-static int rna_Material_shader_poll(PointerRNA *ptr, PointerRNA value)
-{
-	return rna_Shader_id_poll(ptr, value, SHADER_USE_MATERIAL);
-}
-
-static int rna_Material_active_shader_index_get(PointerRNA *ptr)
-{
-	Material *ma = (Material*)ptr->data;
-	return rna_Shader_active_index_get(ma->actshader);
-}
-
-static void rna_Material_active_shader_index_set(PointerRNA *ptr, int value)
-{
-	Material *ma = (Material*)ptr->data;
-	rna_Shader_active_index_set(value, &ma->actshader);
-}
-
-static void rna_Material_active_shader_index_range(PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
-{
-	Material *ma = (Material*)ptr->data;
-	rna_Shader_active_index_range(min, max, &ma->custom_shaders);
-	softmin = min;
-	softmax = max;
-}
-
-static void rna_CustomShader_name_get(struct PointerRNA *ptr, char *str)
-{
-	CustomShader *cs = (CustomShader *)ptr->data;
-	if (cs->shader)
-		strcpy(str, cs->shader->id.name+2);
-	else
-		str[0] = '\0';
-}
-
-static int rna_CustomShader_name_length(struct PointerRNA *ptr)
-{
-	CustomShader *cs = (CustomShader *)ptr->data;
-	if (cs->shader)
-		return strlen(cs->shader->id.name+2);
-	return 0;
-}
-
 #else
 
 static void rna_def_material_mtex(BlenderRNA *brna)
@@ -884,29 +829,6 @@ static void rna_def_material_gamesettings(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "physics", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", GEMAT_NOPHYSICS); /* use bitflags */
 	RNA_def_property_ui_text(prop, "Physics", "Use physics properties of materials ");
-}
-
-static void rna_def_material_custom_shaders(StructRNA *srna)
-{
-	PropertyRNA *prop;
-
-	prop = RNA_def_property(srna, "shaders", PROP_COLLECTION, PROP_NONE);
-	RNA_def_property_collection_sdna(prop, NULL, "custom_shaders", NULL);
-	RNA_def_property_struct_type(prop, "ShaderLink");
-	RNA_def_property_ui_text(prop, "Custom Shaders", "User created shaders to override default shaders");
-
-	prop = RNA_def_property(srna, "active_shader", PROP_POINTER, PROP_NONE);
-	RNA_def_property_struct_type(prop, "Shader");
-	RNA_def_property_pointer_funcs(prop, "rna_Material_active_shader_get", "rna_Material_active_shader_set", NULL, "rna_Material_shader_poll");
-	RNA_def_property_flag(prop, PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Active Shader", "");
-	RNA_def_property_update(prop, 0, "rna_Material_update");
-
-	prop = RNA_def_property(srna, "active_shader_index", PROP_INT, PROP_NONE);
-	RNA_def_property_int_sdna(prop, NULL, "actshader");
-	RNA_def_property_int_funcs(prop, "rna_Material_active_shader_index_get", "rna_Material_active_shader_index_set", "rna_Material_active_shader_index_range");
-	RNA_def_property_ui_text(prop, "Active Shader Index", "");
-	RNA_def_property_update(prop, 0, "rna_Material_update");
 }
 
 static void rna_def_material_colors(StructRNA *srna)
@@ -2091,6 +2013,19 @@ void RNA_def_material(BlenderRNA *brna)
 	RNA_def_property_struct_type(prop, "MaterialGameSettings");
 	RNA_def_property_ui_text(prop, "Game Settings", "Game material settings");
 
+	/* custom shader */
+	prop = RNA_def_property(srna, "use_custom_shader", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "use_custom_shader", 0);
+	RNA_def_property_ui_text(prop, "Use Custom Shader Program", "Overwrite the built in shader program with a custom one");
+	RNA_def_property_update(prop, 0, "rna_Material_update");
+
+	prop = RNA_def_property(srna, "custom_shader", PROP_POINTER, PROP_NONE);
+	RNA_def_property_pointer_sdna(prop, NULL, "custom_shader");
+	RNA_def_property_struct_type(prop, "Shader");
+	RNA_def_property_flag(prop, PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Shader", "The custom shader to use");
+	RNA_def_property_update(prop, 0, "rna_Material_update");
+
 	/* nodetree */
 	prop = RNA_def_property(srna, "node_tree", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "nodetree");
@@ -2127,8 +2062,6 @@ void RNA_def_material(BlenderRNA *brna)
 	rna_def_material_colors(srna);
 	rna_def_material_diffuse(srna);
 	rna_def_material_specularity(srna);
-
-	rna_def_material_custom_shaders(srna);
 
 	/* nested structs */
 	rna_def_material_raymirror(brna);

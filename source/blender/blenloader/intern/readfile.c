@@ -3489,7 +3489,6 @@ static void lib_link_material(FileData *fd, Main *main)
 {
 	Material *ma;
 	MTex *mtex;
-	LinkData *link;
 	int a;
 	
 	for (ma = main->mat.first; ma; ma = ma->id.next) {
@@ -3516,10 +3515,8 @@ static void lib_link_material(FileData *fd, Main *main)
 				ma->nodetree->id.lib = ma->id.lib;
 			}
 
-			for (link = ma->custom_shaders.first; link; link = link->next) {
-				link->data = newlibadr_us(fd, ma->id.lib, link->data);
-			}
-			
+			ma->custom_shader = newlibadr_us(fd, ma->id.lib, ma->custom_shader);
+
 			ma->id.flag -= LIB_NEED_LINK;
 		}
 	}
@@ -3535,8 +3532,6 @@ static void direct_link_material(FileData *fd, Material *ma)
 	for (a = 0; a < MAX_MTEX; a++) {
 		ma->mtex[a] = newdataadr(fd, ma->mtex[a]);
 	}
-
-	link_list(fd, &ma->custom_shaders);
 	
 	ma->ramp_col = newdataadr(fd, ma->ramp_col);
 	ma->ramp_spec = newdataadr(fd, ma->ramp_spec);
@@ -3556,13 +3551,17 @@ static void lib_link_shader(FileData *fd, Main *main)
 {
 	Shader *sh;
 	Uniform *uni;
+	unsigned int i;
+
 	for (sh = main->shader.first; sh; sh = sh->id.next) {
 		if (sh->id.flag & LIB_NEED_LINK) {
 			/* Link ID Properties -- and copy this comment EXACTLY for easy finding
 			 * of library blocks that implement this.*/
 			if (sh->id.properties) IDP_LibLinkProperty(sh->id.properties, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
 
-			sh->sourcetext = newlibadr_us(fd, sh->id.lib, sh->sourcetext);
+			for (i = 0; i < SHADER_SRC_MAX; ++i) {
+				sh->sources[i].textptr = newlibadr_us(fd, sh->id.lib, sh->sources[i].textptr);
+			}
 			for (uni = sh->uniforms.first; uni; uni = uni->next) {
 				if (uni->type == SHADER_UNF_SAMPLER2D)
 					 uni->data = newlibadr(fd, sh->id.lib, uni->data);
@@ -3577,10 +3576,14 @@ static void lib_link_shader(FileData *fd, Main *main)
 static void direct_link_shader(FileData *fd, Shader *sh)
 {
 	Uniform *uni;
+	unsigned int i;
+
+	for (i = 0; i < SHADER_SRC_MAX; ++i) {
+		sh->sources[i].source = NULL;
+	}
 
 	link_list(fd, &sh->uniforms);
 	sh->uniform_cache = BLI_ghash_str_new("Uniform Cache");
-	sh->source = NULL;
 
 	for (uni = sh->uniforms.first; uni; uni = uni->next) {
 		if (uni->type != SHADER_UNF_FLOAT &&
@@ -8090,7 +8093,6 @@ static void expand_brush(FileData *fd, Main *mainvar, Brush *brush)
 
 static void expand_material(FileData *fd, Main *mainvar, Material *ma)
 {
-	LinkData *link;
 	int a;
 	
 	for (a = 0; a < MAX_MTEX; a++) {
@@ -8101,10 +8103,8 @@ static void expand_material(FileData *fd, Main *mainvar, Material *ma)
 	}
 	
 	expand_doit(fd, mainvar, ma->ipo); // XXX deprecated - old animation system
-	
-	for (link = ma->custom_shaders.first; link; link = link->next) {
-		expand_doit(fd, mainvar, link->data);
-	}
+
+	expand_doit(fd, mainvar, ma->custom_shader);
 
 	if (ma->adt)
 		expand_animdata(fd, mainvar, ma->adt);

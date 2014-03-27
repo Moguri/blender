@@ -83,18 +83,6 @@ typedef struct GameSettings {
 	int pad1;
 } GameSettings;
 
-typedef struct CustomShader {
-	struct CustomShader *next, *prev;
-	struct Shader *shader;
-} CustomShader;
-
-typedef struct CustomUniform {
-	struct CustomUniform *next, *prev;
-	char name[64];
-	short type, size, pad[2];
-	void *data;
-} CustomUniform;
-
 typedef struct Material {
 	ID id;
 	struct AnimData *adt;	/* animation data (must be immediately after id for utilities to use it) */ 
@@ -146,7 +134,11 @@ typedef struct Material {
 	short pr_lamp, pr_texture, ml_flag;	/* ml_flag is for disable base material */
 	
 	/* mapping */
-	char mapflag, pad;
+	char mapflag;
+
+	/* custom shaders */
+	char use_custom_shader;
+	Shader *custom_shader;
 
 	/* shaders */
 	short diff_shader, spec_shader;
@@ -159,10 +151,6 @@ typedef struct Material {
 
 	/* runtime - OR'd from 'mtex' */
     short texco, mapto;
-
-	/* custom shaders */
-	ListBase custom_shaders;
-	int actshader, actshader_pad;
 
 	/* ramp colors */
 	struct ColorBand *ramp_col;
