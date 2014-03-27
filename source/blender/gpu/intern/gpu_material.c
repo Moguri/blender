@@ -220,6 +220,8 @@ static int GPU_material_construct_end(GPUMaterial *material)
 			&material->attribs, &material->builtins, fragcode, vertcode,
 			material->ma->id.name);
 
+		MEM_freeN(usernodes);
+
 		if (!material->pass)
 			return 0;
 
