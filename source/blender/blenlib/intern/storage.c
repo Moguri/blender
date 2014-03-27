@@ -58,7 +58,7 @@
 #  include <sys/mount.h>
 #endif
 
-#if defined(__linux__) || defined(__hpux) || defined(__GNU__) || defined(__GLIBC__)
+#if defined(__linux__) || defined(__hpux) || defined(__GNU__) || defined(__GLIBC__) || defined(EMSCRIPTEN)
 #  include <sys/vfs.h>
 #endif
 

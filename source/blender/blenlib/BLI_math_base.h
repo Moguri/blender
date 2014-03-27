@@ -157,6 +157,10 @@ static const int NAN_INT = 0x7FC00000;
 #  endif
 #endif
 
+#ifdef EMSCRIPTEN
+#define finite(n) isfinite(n)
+#endif
+
 /* Causes warning:
  * incompatible types when assigning to type 'Foo' from type 'Bar'
  * ... the compiler optimizes away the temp var */

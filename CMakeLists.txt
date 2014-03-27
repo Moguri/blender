@@ -589,18 +589,19 @@ if(UNIX AND NOT APPLE)
 		message(STATUS "Emscripten detected")
 		set(LIBDIR ${CMAKE_SOURCE_DIR}/../lib/emscripten)
 
-		set(JPEG "${LIBDIR}/jpeg")
-		set(JPEG_INCLUDE_DIR "${JPEG}/include")
-		set(JPEG_LIBPATH ${JPEG}/lib)
-		set(JPEG_LIBRARIES ${JPEG_LIBPATH}/libjpeg.a)
-	else()
-		message(STATUS ${CMAKE_FIND_ROOT_PATH})
-
-		find_package_wrapper(JPEG REQUIRED)
-		find_package_wrapper(PNG REQUIRED)
-		find_package_wrapper(ZLIB REQUIRED)
-		find_package_wrapper(Freetype REQUIRED)
+		set(CMAKE_FIND_ROOT_PATH ${LIBDIR})
 	endif()
+#		set(JPEG "${LIBDIR}/jpeg")
+#		set(JPEG_INCLUDE_DIR "${JPEG}/include")
+#		set(JPEG_LIBPATH ${JPEG}/lib)
+#		set(JPEG_LIBRARIES ${JPEG_LIBPATH}/libjpeg.a)
+
+	message(STATUS ${CMAKE_FIND_ROOT_PATH})
+
+	find_package_wrapper(JPEG REQUIRED)
+	find_package_wrapper(PNG REQUIRED)
+	find_package_wrapper(ZLIB REQUIRED)
+	find_package_wrapper(Freetype REQUIRED)
 
 	if(WITH_PYTHON)
 		# No way to set py34. remove for now.
@@ -644,7 +645,7 @@ if(UNIX AND NOT APPLE)
 		endif()
 	endif()
 
-	if(WITH_SDL)
+	if(WITH_SDL AND NOT EMSCRIPTEN)
 		find_package_wrapper(SDL)
 		mark_as_advanced(
 			SDLMAIN_LIBRARY
@@ -730,7 +731,10 @@ if(UNIX AND NOT APPLE)
 
 	if(WITH_BOOST)
 		# uses in build instructions to override include and library variables
-		if(NOT BOOST_CUSTOM)
+		if(EMSCRIPTEN)
+			set(Boost_INCLUDE_DIRS ${LIBDIR}/include)
+			set(Boost_LIBRARY_DIRS ${LIBDIR}/lib)
+		elseif(NOT BOOST_CUSTOM)
 			if(WITH_STATIC_LIBS)
 				set(Boost_USE_STATIC_LIBS ON)
 			endif()

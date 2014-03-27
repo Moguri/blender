@@ -34,8 +34,14 @@ extern "C" {
 	#include "SDL.h"
 }
 
-#if !SDL_VERSION_ATLEAST(2, 0, 0)
+#if !SDL_VERSION_ATLEAST(2, 0, 0) && !defined(EMSCRIPTEN)
 #  error "SDL 2.0 or newer is needed to build with Ghost"
+#endif
+
+#if defined(EMSCRIPTEN)
+struct SDL_Window;
+struct SDL_DisplayMode;
+struct SDL_GLContext;
 #endif
 
 class GHOST_SystemSDL;

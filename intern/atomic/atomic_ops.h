@@ -42,6 +42,9 @@
  */
 #  define JE_FORCE_SYNC_COMPARE_AND_SWAP_8
 #  define JE_FORCE_SYNC_COMPARE_AND_SWAP_4
+#elif defined(EMSCRIPTEN)
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8
+#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4
 #endif
 
 /* needed for int types */

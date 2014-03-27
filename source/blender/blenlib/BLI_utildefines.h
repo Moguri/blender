@@ -49,7 +49,7 @@
 #endif
 
 /* min/max */
-#if defined(__GNUC__) || defined(__clang__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(EMSCRIPTEN)
 
 #define MIN2(a, b) __extension__ ({  \
 	typeof(a) a_ = (a); typeof(b) b_ = (b); \
@@ -276,7 +276,7 @@
 /* some misc stuff.... */
 
 /* avoid multiple access for supported compilers */
-#if defined(__GNUC__) || defined(__clang__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(EMSCRIPTEN)
 
 #define ABS(a)  ({ \
 	typeof(a) a_ = (a); \

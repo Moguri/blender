@@ -888,7 +888,6 @@ macro(data_to_c_simple
 	list(APPEND ${list_to_add} ${_file_to})
 
 	get_filename_component(_file_to_path ${_file_to} PATH)
-
 	add_custom_command(
 		OUTPUT  ${_file_to}
 		COMMAND ${CMAKE_COMMAND} -E make_directory ${_file_to_path}
