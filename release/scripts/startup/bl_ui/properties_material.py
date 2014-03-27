@@ -260,7 +260,6 @@ class MATERIAL_PT_shader(MaterialButtonsPanel, bpy.types.Panel):
                 layout.prop(sh, "use_%s_shader" % stype)
                 if getattr(sh, "use_%s_shader" % stype):
                     source = getattr(sh, "%s_source" % stype)
-                    print(stype, source)
                     layout.prop(source, "location_type", expand=True)
                     if source.location_type == "INTERNAL":
                         layout.prop(source, "source_text", text="")
