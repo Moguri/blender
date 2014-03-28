@@ -1372,6 +1372,8 @@ void GPU_add_custom_uniforms(ListBase *nodes, ListBase *uniforms, GPUNodeLink *o
 
 	for (unf = uniforms->first; unf; unf = unf->next) {
 
+		if (strstr(unf->name, "bgl")) continue;
+
 		link = gpu_link_from_dna_uniform(unf);
 
 		if (!link) continue;

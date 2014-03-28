@@ -276,15 +276,35 @@ void GPU_material_free(Material *ma)
 	BLI_freelistN(&ma->gpumaterial);
 }
 
+static int bind_lamp(GPUShader *shader, GPULamp *lamp, int lampcount)
+{
+	bool valid = false;
+	char uniform_name[64];
+	int location;
+
+	sprintf(uniform_name, "bgl_lights[%d].position", lampcount);
+	location = GPU_shader_get_uniform(shader, uniform_name);
+	valid = valid || (location != -1);
+	GPU_shader_uniform_vector(shader, location, 3, 1, lamp->dynco);
+
+	return (valid) ? 1 : 0;
+}
+
 void GPU_material_bind(GPUMaterial *material, int oblay, int viewlay, double time, int mipmap, float viewmat[4][4], float viewinv[4][4])
 {
 	if (material->pass) {
 		LinkData *nlink;
 		GPULamp *lamp;
 		GPUShader *shader = GPU_pass_shader(material->pass);
+		unsigned int lampcount = 0;
+		int location;
+
+		/* note material must be bound before setting uniforms */
+		GPU_pass_bind(material->pass, time, mipmap);
 
 		/* handle layer lamps */
 		for (nlink=material->lamps.first; nlink; nlink=nlink->next) {
+
 			lamp= nlink->data;
 
 			if (!lamp->hide && (lamp->lay & viewlay) && (!(lamp->mode & LA_LAYER) || (lamp->lay & oblay))) {
@@ -317,10 +337,11 @@ void GPU_material_bind(GPUMaterial *material, int oblay, int viewlay, double tim
 					GPU_lamp_update_buffer_mats(lamp);
 				mul_m4_m4m4(lamp->dynpersmat, lamp->persmat, viewinv);
 			}
-		}
 
-		/* note material must be bound before setting uniforms */
-		GPU_pass_bind(material->pass, time, mipmap);
+			lampcount += bind_lamp(shader, lamp, lampcount);
+		}
+		location = GPU_shader_get_uniform(shader, "bgl_lightcount");
+		GPU_shader_uniform_int(shader, location, lampcount);
 
 		/* handle per material built-ins */
 		if (material->builtins & GPU_VIEW_MATRIX) {

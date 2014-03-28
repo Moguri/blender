@@ -52,6 +52,21 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
+static char *light_code =
+"#ifndef MAX_LIGHTS\n"
+"#define MAX_LIGHTS 4\n"
+"#endif\n"
+"struct Light {\n"
+"	int type;\n"
+"	int falloff;\n"
+"	float dist;\n"
+"	vec3 color;\n"
+"	vec3 position;\n"
+"	mat3 orientation;\n"
+"};\n"
+"uniform int bgl_lightcount;\n"
+"uniform Light bgl_lights[MAX_LIGHTS];\n";
+
 void init_shader(Shader *sh)
 {
 	unsigned int i;
@@ -328,6 +343,18 @@ void gather_uniforms(Shader *sh)
 
 }
 
+static char* parse_pragmas(char *src)
+{
+	char *light_pragma = "#pragma bgl include lights";
+	char *tmp;
+
+	tmp = BLI_replacestrN(src, light_pragma, light_code);
+	MEM_freeN(src);
+	src = tmp;
+
+	return src;
+}
+
 void BKE_shader_read_source(Shader *sh, Main *main)
 {
 	Uniform *uni;
@@ -345,6 +372,9 @@ void BKE_shader_read_source(Shader *sh, Main *main)
 			sh->sources[i].source = file_to_buf(sh->sources[i].filepath, main);
 		else
 			sh->sources[i].source = txt_to_buf(sh->sources[i].textptr);
+
+		if (sh->sources[i].source)
+			sh->sources[i].source = parse_pragmas(sh->sources[i].source);
 	}
 
 	/* Cache the uniform list and rebuild it */
