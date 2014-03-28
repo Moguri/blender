@@ -281,11 +281,23 @@ static int bind_lamp(GPUShader *shader, GPULamp *lamp, int lampcount)
 	bool valid = false;
 	char uniform_name[64];
 	int location;
+	float color[3];
 
 	sprintf(uniform_name, "bgl_lights[%d].position", lampcount);
 	location = GPU_shader_get_uniform(shader, uniform_name);
 	valid = valid || (location != -1);
 	GPU_shader_uniform_vector(shader, location, 3, 1, lamp->dynco);
+
+	sprintf(uniform_name, "bgl_lights[%d].color", lampcount);
+	location = GPU_shader_get_uniform(shader, uniform_name);
+	valid = valid || (location != -1);
+	mul_v3_v3fl(color, lamp->col, lamp->energy);
+	GPU_shader_uniform_vector(shader, location, 3, 1, color);
+
+	sprintf(uniform_name, "bgl_lights[%d].dist", lampcount);
+	location = GPU_shader_get_uniform(shader, uniform_name);
+	valid = valid || (location != -1);
+	GPU_shader_uniform_vector(shader, location, 1, 1, &lamp->dist);
 
 	return (valid) ? 1 : 0;
 }
