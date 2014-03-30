@@ -1435,7 +1435,7 @@ GPUPass *GPU_generate_pass(ListBase *nodes, ListBase *usernodes, GPUNodeLink *ou
 	GPUShader *shader;
 	GPUPass *pass;
 
-	char *fragmentcode, *vertexcode;
+	char *fragmentcode, *vertexcode, *libcode=NULL;
 
 	/*if (!FUNCTION_LIB) {
 		GPU_nodes_free(nodes);
@@ -1452,15 +1452,17 @@ GPUPass *GPU_generate_pass(ListBase *nodes, ListBase *usernodes, GPUNodeLink *ou
 	gpu_nodes_get_builtin_flag(nodes, builtins);
 
 	/* generate code if needed and compile with opengl */
-	if (!infcode)
+	if (!infcode) {
 		fragmentcode = code_generate_fragment(nodes, outlink->output, name);
+		libcode = glsl_material_library;
+	}
 	else
 		fragmentcode = BLI_strdup(infcode);
 	if (!invcode)
 		vertexcode = code_generate_vertex(nodes);
 	else
 		vertexcode = BLI_strdup(invcode);
-	shader = GPU_shader_create(vertexcode, fragmentcode, glsl_material_library, NULL);
+	shader = GPU_shader_create(vertexcode, fragmentcode, libcode, NULL);
 
 	/* failed? */
 	if (!shader) {
