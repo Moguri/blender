@@ -1354,11 +1354,15 @@ int GPU_link_changed(GPUNodeLink *link)
 
 static GPUNodeLink* gpu_link_from_dna_uniform(Uniform *uniform)
 {
+	Tex *tex;
 	switch (uniform->type) {
 	case SHADER_UNF_FLOAT:	return GPU_dynamic_uniform(&uniform->data, GPU_FLOAT, NULL);
 	case SHADER_UNF_VEC2:	return GPU_dynamic_uniform(uniform->data, GPU_VEC2, NULL);
 	case SHADER_UNF_VEC3:	return GPU_dynamic_uniform(uniform->data, GPU_VEC3, NULL);
 	case SHADER_UNF_VEC4:	return GPU_dynamic_uniform(uniform->data, GPU_VEC4, NULL);
+	case SHADER_UNF_SAMPLER2D:
+		tex = uniform->data;
+		return GPU_image(tex->ima, &tex->iuser, TRUE);
 	default:	return NULL;
 	}
 }
@@ -1388,6 +1392,8 @@ void GPU_add_custom_uniforms(ListBase *nodes, ListBase *uniforms, GPUNodeLink *o
 
 		BLI_addtail(nodes, node);
 	}
+
+	codegen_set_unique_ids(nodes);
 }
 
 /* Pass create/free */
