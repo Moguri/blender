@@ -208,7 +208,7 @@ static int GPU_material_construct_end(GPUMaterial *material)
 		outlink = material->outlink;
 		usernodes = MEM_callocN(sizeof(ListBase), "Custom Uniform Nodes");
 
-		if (sh) {
+		if (material->ma->use_custom_shader && sh) {
 			if (sh->flags & SHADER_FLAG_USE_VERTEX)
 				vertcode = sh->sources[SHADER_SRC_VERTEX].source;
 			if (sh->flags & SHADER_FLAG_USE_FRAGMENT)
