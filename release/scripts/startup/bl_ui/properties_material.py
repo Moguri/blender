@@ -53,7 +53,8 @@ def simple_material(mat):
 
 
 def custom_shader(mat):
-    return mat.custom_shader and mat.use_custom_shader
+    return mat.custom_shader and mat.use_custom_shader\
+        and mat.custom_shader.use_fragment_shader
 
 
 class MATERIAL_MT_sss_presets(Menu):
