@@ -390,12 +390,12 @@ void RNA_def_shader(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "use_vertex_shader", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", SHADER_FLAG_USE_VERTEX);
 	RNA_def_property_ui_text(prop, "Use Vertex Shader", "Enable the use of a vertex shader with this shader program");
-	RNA_def_property_update(prop, 0, "rna_Shader_update");
+	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
 
 	prop = RNA_def_property(srna, "use_fragment_shader", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", SHADER_FLAG_USE_FRAGMENT);
 	RNA_def_property_ui_text(prop, "Use Fragment Shader", "Enable the use of a fragment shader with this shader program");
-	RNA_def_property_update(prop, 0, "rna_Shader_update");
+	RNA_def_property_update(prop, 0, "rna_Shader_source_update");
 
 	/* Shader sources */
 	prop = RNA_def_property(srna, "vertex_source", PROP_POINTER, PROP_NONE);

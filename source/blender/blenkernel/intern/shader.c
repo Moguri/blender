@@ -316,6 +316,11 @@ void gather_uniforms(Shader *sh)
 	unsigned int i;
 
 	for (i = 0; i < SHADER_SRC_MAX; ++i) {
+		if (i == SHADER_SRC_VERTEX && !(sh->flags & SHADER_FLAG_USE_VERTEX))
+			continue;
+		if (i == SHADER_SRC_FRAGMENT && !(sh->flags & SHADER_FLAG_USE_FRAGMENT))
+			continue;
+
 		src = sh->sources[i].source;
 
 		if (!src)
