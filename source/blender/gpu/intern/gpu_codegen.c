@@ -1363,7 +1363,7 @@ static GPUNodeLink* gpu_link_from_dna_uniform(Uniform *uniform)
 	case SHADER_UNF_SAMPLER2D:
 		tex = uniform->data;
 		if (tex)
-			return GPU_image(tex->ima, &tex->iuser, TRUE);
+			return GPU_image(tex->ima, &tex->iuser, true);
 	default:	return NULL;
 	}
 }
