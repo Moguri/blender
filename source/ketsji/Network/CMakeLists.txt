@@ -23,9 +23,26 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
+set(INC
+	.
+	../../../intern/container
+	../../../intern/string
+	../../blender/blenlib
+)
 
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
-endif()
+set(INC_SYS
+	../../../intern/moto/include
+)
 
+set(SRC
+	NG_NetworkMessage.cpp
+	NG_NetworkObject.cpp
+	NG_NetworkScene.cpp
+
+	NG_NetworkDeviceInterface.h
+	NG_NetworkMessage.h
+	NG_NetworkObject.h
+	NG_NetworkScene.h
+)
+
+blender_add_lib(ge_logic_ngnetwork "${SRC}" "${INC}" "${INC_SYS}")

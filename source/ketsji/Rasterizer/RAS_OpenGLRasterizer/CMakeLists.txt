@@ -23,9 +23,46 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
+set(INC
+	..
+	# XXX Remove these <<<
+	../../BlenderRoutines
+	../../Expressions
+	../../GameLogic
+	../../Ketsji
+	../../Physics/common
+	# >>>
+	../../SceneGraph
+	../../../blender/blenfont
+	../../../blender/blenkernel
+	../../../blender/blenlib
+	../../../blender/gpu
+	../../../blender/makesdna
+	../../../../intern/container
+	../../../../intern/glew-mx
+	../../../../intern/string
+)
 
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
-endif()
+set(INC_SYS
+	../../../../intern/moto/include
+	${GLEW_INCLUDE_PATH}
+)
 
+set(SRC
+	RAS_ListRasterizer.cpp
+	RAS_OpenGLLight.cpp
+	RAS_OpenGLRasterizer.cpp
+	RAS_StorageVA.cpp
+	RAS_StorageVBO.cpp
+
+	RAS_IStorage.h
+	RAS_ListRasterizer.h
+	RAS_OpenGLLight.h
+	RAS_OpenGLRasterizer.h
+	RAS_StorageVA.h
+	RAS_StorageVBO.h
+)
+
+add_definitions(${GL_DEFINITIONS})
+
+blender_add_lib(ge_oglrasterizer "${SRC}" "${INC}" "${INC_SYS}")

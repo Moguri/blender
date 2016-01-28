@@ -23,9 +23,50 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
+# since this includes bullet we get errors from the headers too
+remove_strict_flags()
 
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
+set(INC
+	.
+	../common
+	../../Converter
+	../../Expressions
+	../../GameLogic
+	../../Ketsji
+	../../Rasterizer
+	../../SceneGraph
+	../../../blender/blenkernel
+	../../../blender/blenlib
+	../../../blender/makesdna
+	../../../../intern/container
+	../../../../intern/guardedalloc
+	../../../../intern/glew-mx
+	../../../../intern/string
+)
+
+set(INC_SYS
+	../../../../intern/moto/include
+	${GLEW_INCLUDE_PATH}
+	${PYTHON_INCLUDE_DIRS}
+)
+
+set(SRC
+	CcdPhysicsEnvironment.cpp
+	CcdPhysicsController.cpp
+	CcdGraphicController.cpp
+
+	CcdGraphicController.h
+	CcdPhysicsController.h
+	CcdPhysicsEnvironment.h
+)
+
+if(WITH_BULLET)
+	list(APPEND INC_SYS
+		${BULLET_INCLUDE_DIRS}
+	)
+	add_definitions(-DWITH_BULLET)
 endif()
 
+add_definitions(${GL_DEFINITIONS})
+
+blender_add_lib(ge_phys_bullet "${SRC}" "${INC}" "${INC_SYS}")

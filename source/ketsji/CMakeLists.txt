@@ -23,9 +23,35 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
+remove_extra_strict_flags()
 
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
+# there are too many inter-includes so best define here
+if(WITH_PYTHON)
+	blender_include_dirs_sys("${PYTHON_INCLUDE_DIRS}")
+	add_definitions(-DWITH_PYTHON)
 endif()
 
+add_subdirectory(BlenderRoutines)
+add_subdirectory(Converter)
+add_subdirectory(Expressions)
+add_subdirectory(GameLogic)
+add_subdirectory(Ketsji)
+add_subdirectory(Ketsji/KXNetwork)
+add_subdirectory(Network)
+add_subdirectory(Network/LoopBackNetwork)
+add_subdirectory(Physics/Dummy)
+add_subdirectory(Rasterizer)
+add_subdirectory(Rasterizer/RAS_OpenGLRasterizer)
+add_subdirectory(SceneGraph)
+
+if(WITH_BULLET)
+	add_subdirectory(Physics/Bullet)
+endif()
+
+if(WITH_PYTHON)
+	add_subdirectory(VideoTexture)
+endif()
+
+if(WITH_PLAYER)
+	add_subdirectory(GamePlayer)
+endif()

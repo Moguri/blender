@@ -23,9 +23,31 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
+set(INC
+	.
+)
 
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
-endif()
+set(INC_SYS
+	../../../intern/moto/include
+)
 
+set(SRC
+	SG_BBox.cpp
+	SG_Controller.cpp
+	SG_IObject.cpp
+	SG_Node.cpp
+	SG_Spatial.cpp
+	SG_Tree.cpp
+
+	SG_BBox.h
+	SG_Controller.h
+	SG_DList.h
+	SG_IObject.h
+	SG_Node.h
+	SG_ParentRelation.h
+	SG_QList.h
+	SG_Spatial.h
+	SG_Tree.h
+)
+
+blender_add_lib(ge_scenegraph "${SRC}" "${INC}" "${INC_SYS}")

@@ -23,9 +23,19 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
+set(INC
+	.
+	../common
+)
 
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
-endif()
+set(INC_SYS
+	../../../../intern/moto/include
+)
 
+set(SRC
+	DummyPhysicsEnvironment.cpp
+
+	DummyPhysicsEnvironment.h
+)
+
+blender_add_lib(ge_phys_dummy "${SRC}" "${INC}" "${INC_SYS}")

@@ -23,9 +23,5 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
-
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
-endif()
-
+add_subdirectory(common)
+add_subdirectory(ghost)

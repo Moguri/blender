@@ -23,9 +23,21 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(blender)
+set(INC
+	.
+	..
+	../../../../intern/container
+	../../../../intern/string
+)
 
-if(WITH_GAMEENGINE)
-	add_subdirectory(ketsji)
-endif()
+set(INC_SYS
 
+)
+
+set(SRC
+	NG_LoopBackNetworkDeviceInterface.cpp
+
+	NG_LoopBackNetworkDeviceInterface.h
+)
+
+blender_add_lib(ge_logic_loopbacknetwork "${SRC}" "${INC}" "${INC_SYS}")
