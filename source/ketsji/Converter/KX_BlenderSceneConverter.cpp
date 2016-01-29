@@ -122,8 +122,6 @@ KX_BlenderSceneConverter::KX_BlenderSceneConverter(
 							:m_maggie(maggie),
 							m_ketsjiEngine(engine),
 							m_alwaysUseExpandFraming(false),
-							m_usemat(false),
-							m_useglslmat(false),
 							m_use_mat_cache(true)
 {
 	BKE_main_id_tag_all(maggie, false);  /* avoid re-tagging later on */
@@ -366,33 +364,11 @@ void KX_BlenderSceneConverter::RemoveScene(KX_Scene *scene)
 	}
 }
 
-// use blender materials
-void KX_BlenderSceneConverter::SetMaterials(bool val)
-{
-	m_usemat = val;
-	m_useglslmat = false;
-}
-
-void KX_BlenderSceneConverter::SetGLSLMaterials(bool val)
-{
-	m_usemat = val;
-	m_useglslmat = val;
-}
-
 void KX_BlenderSceneConverter::SetCacheMaterials(bool val)
 {
 	m_use_mat_cache = val;
 }
 
-bool KX_BlenderSceneConverter::GetMaterials()
-{
-	return m_usemat;
-}
-
-bool KX_BlenderSceneConverter::GetGLSLMaterials()
-{
-	return m_useglslmat;
-}
 
 bool KX_BlenderSceneConverter::GetCacheMaterials()
 {

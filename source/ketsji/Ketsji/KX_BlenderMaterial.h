@@ -11,9 +11,8 @@
 
 #include "RAS_IPolygonMaterial.h"
 #include "BL_Material.h"
-#include "BL_Texture.h"
-#include "BL_Shader.h"
 #include "BL_BlenderShader.h"
+#include "BL_Texture.h"
 
 #include "EXP_PyObjectPlus.h"
 
@@ -110,7 +109,6 @@ public:
 	// --------------------------------
 	virtual PyObject *py_repr(void) { return PyUnicode_From_STR_String(mMaterial->matname); }
 
-	static PyObject *pyattr_get_shader(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
 	static PyObject *pyattr_get_materialIndex(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
 	static PyObject *pyattr_get_blending(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
 	static int       pyattr_set_blending(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
@@ -129,7 +127,6 @@ public:
 	static PyObject *pyattr_get_emit(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
 	static int       pyattr_set_emit(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
 
-	KX_PYMETHOD_DOC(KX_BlenderMaterial, getShader);
 	KX_PYMETHOD_DOC(KX_BlenderMaterial, getMaterialIndex);
 	KX_PYMETHOD_DOC(KX_BlenderMaterial, getTexture);
 	KX_PYMETHOD_DOC(KX_BlenderMaterial, setTexture);
@@ -145,7 +142,6 @@ public:
 
 private:
 	BL_Material*		mMaterial;
-	BL_Shader*			mShader;
 	BL_BlenderShader*	mBlenderShader;
 	KX_Scene*		mScene;
 	BL_Texture		mTextures[MAXTEX];		// texture array
@@ -163,8 +159,6 @@ private:
 		float hardness;
 		float emit;
 	} mSavedData;
-
-	void InitTextures();
 
 	void SetBlenderGLSLShader();
 
@@ -191,7 +185,6 @@ private:
 
 	// shader chacing
 	static BL_BlenderShader *mLastBlenderShader;
-	static BL_Shader		*mLastShader;
 
 	mutable int	mPass;
 };

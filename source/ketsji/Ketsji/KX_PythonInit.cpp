@@ -114,7 +114,6 @@ extern "C" {
 
 #include "NG_NetworkScene.h" //Needed for sendMessage()
 
-#include "BL_Shader.h"
 #include "BL_Action.h"
 
 #include "KX_PyMath.h"
@@ -1127,130 +1126,6 @@ static PyObject *gPyDisableMotionBlur(PyObject *)
 	Py_RETURN_NONE;
 }
 
-static int getGLSLSettingFlag(const char *setting)
-{
-	if (strcmp(setting, "lights") == 0)
-		return GAME_GLSL_NO_LIGHTS;
-	else if (strcmp(setting, "shaders") == 0)
-		return GAME_GLSL_NO_SHADERS;
-	else if (strcmp(setting, "shadows") == 0)
-		return GAME_GLSL_NO_SHADOWS;
-	else if (strcmp(setting, "ramps") == 0)
-		return GAME_GLSL_NO_RAMPS;
-	else if (strcmp(setting, "nodes") == 0)
-		return GAME_GLSL_NO_NODES;
-	else if (strcmp(setting, "extra_textures") == 0)
-		return GAME_GLSL_NO_EXTRA_TEX;
-	else
-		return -1;
-}
-
-static PyObject *gPySetGLSLMaterialSetting(PyObject *,
-                                           PyObject *args,
-                                           PyObject *)
-{
-	GlobalSettings *gs= gp_KetsjiEngine->GetGlobalSettings();
-	char *setting;
-	int enable, flag, sceneflag;
-
-	if (!PyArg_ParseTuple(args,"si:setGLSLMaterialSetting",&setting,&enable))
-		return NULL;
-	
-	flag = getGLSLSettingFlag(setting);
-	
-	if (flag == -1) {
-		PyErr_SetString(PyExc_ValueError, "Rasterizer.setGLSLMaterialSetting(string): glsl setting is not known");
-		return NULL;
-	}
-
-	sceneflag= gs->glslflag;
-	
-	if (enable)
-		gs->glslflag &= ~flag;
-	else
-		gs->glslflag |= flag;
-
-	/* display lists and GLSL materials need to be remade */
-	if (sceneflag != gs->glslflag) {
-		GPU_materials_free();
-		if (gp_KetsjiEngine) {
-			KX_SceneList *scenes = gp_KetsjiEngine->CurrentScenes();
-			KX_SceneList::iterator it;
-
-			for (it=scenes->begin(); it!=scenes->end(); it++) {
-				// temporarily store the glsl settings in the scene for the GLSL materials
-				(*it)->GetBlenderScene()->gm.flag = gs->glslflag;
-				if ((*it)->GetBucketManager()) {
-					(*it)->GetBucketManager()->ReleaseDisplayLists();
-					(*it)->GetBucketManager()->ReleaseMaterials();
-				}
-			}
-		}
-	}
-
-	Py_RETURN_NONE;
-}
-
-static PyObject *gPyGetGLSLMaterialSetting(PyObject *,
-                                           PyObject *args,
-                                           PyObject *)
-{
-	GlobalSettings *gs= gp_KetsjiEngine->GetGlobalSettings();
-	char *setting;
-	int enabled = 0, flag;
-
-	if (!PyArg_ParseTuple(args,"s:getGLSLMaterialSetting",&setting))
-		return NULL;
-	
-	flag = getGLSLSettingFlag(setting);
-	
-	if (flag == -1) {
-		PyErr_SetString(PyExc_ValueError, "Rasterizer.getGLSLMaterialSetting(string): glsl setting is not known");
-		return NULL;
-	}
-
-	enabled = ((gs->glslflag & flag) != 0);
-	return PyLong_FromLong(enabled);
-}
-
-#define KX_BLENDER_MULTITEX_MATERIAL	1
-#define KX_BLENDER_GLSL_MATERIAL		2
-
-static PyObject *gPySetMaterialType(PyObject *,
-                                    PyObject *args,
-                                    PyObject *)
-{
-	GlobalSettings *gs= gp_KetsjiEngine->GetGlobalSettings();
-	int type;
-
-	if (!PyArg_ParseTuple(args,"i:setMaterialType",&type))
-		return NULL;
-
-	if (type == KX_BLENDER_GLSL_MATERIAL)
-		gs->matmode= GAME_MAT_GLSL;
-	else if (type == KX_BLENDER_MULTITEX_MATERIAL)
-		gs->matmode= GAME_MAT_MULTITEX;
-	else {
-		PyErr_SetString(PyExc_ValueError, "Rasterizer.setMaterialType(int): material type is not known");
-		return NULL;
-	}
-
-	Py_RETURN_NONE;
-}
-
-static PyObject *gPyGetMaterialType(PyObject *)
-{
-	GlobalSettings *gs= gp_KetsjiEngine->GetGlobalSettings();
-	int flag;
-
-	if (gs->matmode == GAME_MAT_GLSL)
-		flag = KX_BLENDER_GLSL_MATERIAL;
-	else
-		flag = KX_BLENDER_MULTITEX_MATERIAL;
-	
-	return PyLong_FromLong(flag);
-}
-
 static PyObject *gPySetAnisotropicFiltering(PyObject *, PyObject *args)
 {
 	short level;
@@ -1483,14 +1358,6 @@ static struct PyMethodDef rasterizer_methods[] = {
 	{"setFocalLength", (PyCFunction) gPySetFocalLength, METH_VARARGS, "set the focal length for stereo mode"},
 	{"getFocalLength", (PyCFunction) gPyGetFocalLength, METH_VARARGS, "get the focal length for stereo mode"},
 	{"getStereoEye", (PyCFunction) gPyGetStereoEye, METH_VARARGS, "get the current stereoscopy eye being rendered"},
-	{"setMaterialMode",(PyCFunction) gPySetMaterialType,
-	 METH_VARARGS, "set the material mode to use for OpenGL rendering"},
-	{"getMaterialMode",(PyCFunction) gPyGetMaterialType,
-	 METH_NOARGS, "get the material mode being used for OpenGL rendering"},
-	{"setGLSLMaterialSetting",(PyCFunction) gPySetGLSLMaterialSetting,
-	 METH_VARARGS, "set the state of a GLSL material setting"},
-	{"getGLSLMaterialSetting",(PyCFunction) gPyGetGLSLMaterialSetting,
-	 METH_VARARGS, "get the state of a GLSL material setting"},
 	{"setAnisotropicFiltering", (PyCFunction) gPySetAnisotropicFiltering,
 	 METH_VARARGS, "set the anisotropic filtering level (must be one of 1, 2, 4, 8, 16)"},
 	{"getAnisotropicFiltering", (PyCFunction) gPyGetAnisotropicFiltering,
@@ -1674,24 +1541,6 @@ PyMODINIT_FUNC initGameLogicPythonBinding()
 	KX_MACRO_addTypesToDict(d, BL_DST_ALPHA, GL_DST_ALPHA);
 	KX_MACRO_addTypesToDict(d, BL_ONE_MINUS_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA);
 	KX_MACRO_addTypesToDict(d, BL_SRC_ALPHA_SATURATE, GL_SRC_ALPHA_SATURATE);
-
-
-	/* 8. UniformTypes */
-	KX_MACRO_addTypesToDict(d, SHD_TANGENT, BL_Shader::SHD_TANGENT);
-	KX_MACRO_addTypesToDict(d, MODELVIEWMATRIX, BL_Shader::MODELVIEWMATRIX);
-	KX_MACRO_addTypesToDict(d, MODELVIEWMATRIX_TRANSPOSE, BL_Shader::MODELVIEWMATRIX_TRANSPOSE);
-	KX_MACRO_addTypesToDict(d, MODELVIEWMATRIX_INVERSE, BL_Shader::MODELVIEWMATRIX_INVERSE);
-	KX_MACRO_addTypesToDict(d, MODELVIEWMATRIX_INVERSETRANSPOSE, BL_Shader::MODELVIEWMATRIX_INVERSETRANSPOSE);
-	KX_MACRO_addTypesToDict(d, MODELMATRIX, BL_Shader::MODELMATRIX);
-	KX_MACRO_addTypesToDict(d, MODELMATRIX_TRANSPOSE, BL_Shader::MODELMATRIX_TRANSPOSE);
-	KX_MACRO_addTypesToDict(d, MODELMATRIX_INVERSE, BL_Shader::MODELMATRIX_INVERSE);
-	KX_MACRO_addTypesToDict(d, MODELMATRIX_INVERSETRANSPOSE, BL_Shader::MODELMATRIX_INVERSETRANSPOSE);
-	KX_MACRO_addTypesToDict(d, VIEWMATRIX, BL_Shader::VIEWMATRIX);
-	KX_MACRO_addTypesToDict(d, VIEWMATRIX_TRANSPOSE, BL_Shader::VIEWMATRIX_TRANSPOSE);
-	KX_MACRO_addTypesToDict(d, VIEWMATRIX_INVERSE, BL_Shader::VIEWMATRIX_INVERSE);
-	KX_MACRO_addTypesToDict(d, VIEWMATRIX_INVERSETRANSPOSE, BL_Shader::VIEWMATRIX_INVERSETRANSPOSE);
-	KX_MACRO_addTypesToDict(d, CAM_POS, BL_Shader::CAM_POS);
-	KX_MACRO_addTypesToDict(d, CONSTANT_TIMER, BL_Shader::CONSTANT_TIMER);
 
 	/* 9. state actuator */
 	KX_MACRO_addTypesToDict(d, KX_STATE1, (1<<0));
@@ -2339,10 +2188,6 @@ PyMODINIT_FUNC initRasterizerPythonBinding()
 	ErrorObject = PyUnicode_FromString("Rasterizer.error");
 	PyDict_SetItemString(d, "error", ErrorObject);
 	Py_DECREF(ErrorObject);
-
-	/* needed for get/setMaterialType */
-	KX_MACRO_addTypesToDict(d, KX_BLENDER_MULTITEX_MATERIAL, KX_BLENDER_MULTITEX_MATERIAL);
-	KX_MACRO_addTypesToDict(d, KX_BLENDER_GLSL_MATERIAL, KX_BLENDER_GLSL_MATERIAL);
 
 	KX_MACRO_addTypesToDict(d, RAS_MIPMAP_NONE, RAS_IRasterizer::RAS_MIPMAP_NONE);
 	KX_MACRO_addTypesToDict(d, RAS_MIPMAP_NEAREST, RAS_IRasterizer::RAS_MIPMAP_NEAREST);

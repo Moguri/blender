@@ -93,8 +93,6 @@ class KX_BlenderSceneConverter : public KX_ISceneConverter
 	class KX_KetsjiEngine*	m_ketsjiEngine;
 	class KX_Scene*			m_currentScene;	// Scene being converted
 	bool					m_alwaysUseExpandFraming;
-	bool					m_usemat;
-	bool					m_useglslmat;
 	bool					m_use_mat_cache;
 
 public:
@@ -156,14 +154,6 @@ public:
 	///this generates ipo curves for position, rotation, allowing to use game physics in animation
 	virtual void	WritePhysicsObjectToAnimationIpo(int frameNumber);
 	virtual void	TestHandlesPhysicsObjectToAnimationIpo();
-
-	// use blender materials
-	virtual void SetMaterials(bool val);
-	virtual bool GetMaterials();
-
-	// use blender glsl materials
-	virtual void SetGLSLMaterials(bool val);
-	virtual bool GetGLSLMaterials();
 
 	// cache materials during conversion
 	virtual void SetCacheMaterials(bool val);

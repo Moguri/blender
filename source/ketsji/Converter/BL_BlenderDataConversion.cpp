@@ -415,20 +415,6 @@ static void SetDefaultLightMode(Scene* scene)
 	}
 }
 
-
-static bool GetMaterialUseVColor(Material *ma, const bool glslmat)
-{
-	if (ma) {
-		/* glsl uses vertex colors, otherwise use material setting
-		 * defmaterial doesn't have VERTEXCOLP as default [#34505] */
-		return (glslmat || ma == &defmaterial || (ma->mode & MA_VERTEXCOLP) != 0);
-	}
-	else {
-		/* no material, use vertex colors */
-		return true;
-	}
-}
-
 // --
 static void GetRGB(
         const bool use_vcol,
@@ -566,17 +552,15 @@ static bool ConvertMaterial(
 	MTFace *tface,
 	const char *tfaceName,
 	MFace *mface,
-	MCol *mmcol,
-	bool glslmat)
+	MCol *mmcol)
 {
 	material->Initialize();
 	int texalpha = 0;
 	const bool validmat  = (mat != NULL);
 	const bool validface = (tface != NULL);
-	const bool use_vcol  = GetMaterialUseVColor(mat, glslmat);
+	const bool use_vcol  = true;
 	
 	material->IdMode = DEFAULT_BLENDER;
-	material->glslmat = (validmat) ? glslmat: false;
 	material->materialindex = mface->mat_nr;
 
 	// --------------------------------
@@ -663,10 +647,6 @@ static bool ConvertMaterial(
 							material->color_blend[i] = mttmp->colfac;
 							material->flag[i] |= (mttmp->mapto & MAP_ALPHA) ? TEXALPHA : 0;
 							material->flag[i] |= (mttmp->texflag & MTEX_NEGATIVE) ? TEXNEG : 0;
-
-							if (!glslmat && (material->flag[i] & TEXALPHA)) {
-								texalpha = 1;
-							}
 						}
 					}
 					else if (mttmp->tex->type == TEX_ENVMAP) {
@@ -900,14 +880,13 @@ static RAS_MaterialBucket *material_from_mesh(Material *ma, MFace *mface, MTFace
 	{
 		bl_mat = new BL_Material();
 
-		ConvertMaterial(bl_mat, ma, tface, tfaceName, mface, mcol,
-			converter->GetGLSLMaterials());
+		ConvertMaterial(bl_mat, ma, tface, tfaceName, mface, mcol);
 
 		if (ma && (ma->mode & MA_FACETEXTURE) == 0)
 			converter->CacheBlenderMaterial(scene, ma, bl_mat);
 	}
 
-	const bool use_vcol = GetMaterialUseVColor(ma, bl_mat->glslmat);
+	const bool use_vcol = true;
 	GetRGB(use_vcol, mface, mcol, ma, rgb);
 
 	GetUVs(bl_mat, layers, mface, tface, uvs);
@@ -1447,19 +1426,7 @@ static KX_LightObject *gamelight_from_blamp(Object *ob, Lamp *la, unsigned int l
 	
 	lightobj->m_nodiffuse = (la->mode & LA_NO_DIFF) != 0;
 	lightobj->m_nospecular = (la->mode & LA_NO_SPEC) != 0;
-	
-	bool glslmat = converter->GetGLSLMaterials();
 
-	// in GLSL NEGATIVE LAMP is handled inside the lamp update function
-	if (glslmat==0) {
-		if (la->mode & LA_NEG)
-		{
-			lightobj->m_color[0] = -lightobj->m_color[0];
-			lightobj->m_color[1] = -lightobj->m_color[1];
-			lightobj->m_color[2] = -lightobj->m_color[2];
-		}
-	}
-		
 	if (la->type==LA_SUN) {
 		lightobj->m_type = RAS_ILightObject::LIGHT_SUN;
 	} else if (la->type==LA_SPOT) {
@@ -1468,8 +1435,7 @@ static KX_LightObject *gamelight_from_blamp(Object *ob, Lamp *la, unsigned int l
 		lightobj->m_type = RAS_ILightObject::LIGHT_NORMAL;
 	}
 
-	gamelight = new KX_LightObject(kxscene, KX_Scene::m_callbacks, rasterizer,
-		lightobj, glslmat);
+	gamelight = new KX_LightObject(kxscene, KX_Scene::m_callbacks, rasterizer, lightobj);
 	
 	return gamelight;
 }

@@ -2055,15 +2055,3 @@ void KX_KetsjiEngine::Resize()
 	}
 }
 
-
-void KX_KetsjiEngine::SetGlobalSettings(GlobalSettings* gs)
-{
-	m_globalsettings.matmode = gs->matmode;
-	m_globalsettings.glslflag = gs->glslflag;
-}
-
-GlobalSettings* KX_KetsjiEngine::GetGlobalSettings(void)
-{
-	return &m_globalsettings;
-}
-

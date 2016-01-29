@@ -68,7 +68,6 @@ set(SRC
 	BL_ActionManager.cpp
 	BL_BlenderShader.cpp
 	BL_Material.cpp
-	BL_Shader.cpp
 	BL_Texture.cpp
 	KX_ArmatureSensor.cpp
 	KX_BlenderMaterial.cpp
@@ -139,7 +138,6 @@ set(SRC
 	BL_ActionManager.h
 	BL_BlenderShader.h
 	BL_Material.h
-	BL_Shader.h
 	BL_Texture.h
 	KX_ArmatureSensor.h
 	KX_BlenderMaterial.h

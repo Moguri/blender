@@ -60,11 +60,6 @@ enum KX_ExitRequestMode
 	KX_EXIT_REQUEST_MAX
 };
 
-typedef struct {
-	short matmode;
-	short glslflag;
-}	GlobalSettings;
-
 /**
  * KX_KetsjiEngine is the core game engine class.
  */
@@ -199,9 +194,6 @@ private:
 	float					m_overrideFrameColorG;
 	/** Blue component of framing bar color. */
 	float					m_overrideFrameColorB;
-
-	/** Settings that doesn't go away with Game Actuator */
-	GlobalSettings m_globalsettings;
 
 	/** Task scheduler for multi-threading */
 	TaskScheduler* m_taskscheduler;
@@ -497,9 +489,6 @@ public:
 
 	KX_Scene*		CreateScene(const STR_String& scenename);
 	KX_Scene*		CreateScene(Scene *scene, bool libloading=false);
-
-	GlobalSettings*	GetGlobalSettings(void);
-	void			SetGlobalSettings(GlobalSettings* gs);
 
 	/**
 	 * Invalidate all the camera matrices and handle other

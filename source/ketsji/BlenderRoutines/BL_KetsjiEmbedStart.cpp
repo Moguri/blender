@@ -250,11 +250,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 	PyObject *pyGlobalDict = PyDict_New(); /* python utility storage, spans blend file loading */
 #endif
 
-	// Globals to be carried on over blender files
-	GlobalSettings gs;
-	gs.matmode= startscene->gm.matmode;
-	gs.glslflag= startscene->gm.flag;
-
 	do
 	{
 		View3D *v3d= CTX_wm_view3d(C);
@@ -342,9 +337,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		ketsjiengine->SetTimingDisplay(frameRate, profile, properties);
 		ketsjiengine->SetRestrictAnimationFPS(restrictAnimFPS);
 		KX_KetsjiEngine::SetExitKey(ConvertKeyCode(startscene->gm.exitkey));
-
-		//set the global settings (carried over if restart/load new files)
-		ketsjiengine->SetGlobalSettings(&gs);
 
 #ifdef WITH_PYTHON
 		CValue::SetDeprecationWarnings(nodepwarnings);
@@ -464,20 +456,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 			if (always_use_expand_framing)
 				sceneconverter->SetAlwaysUseExpandFraming(true);
 
-			bool usemat = false, useglslmat = false;
-
-			if (GLEW_ARB_multitexture && GLEW_VERSION_1_1)
-				usemat = true;
-
-			if (GPU_glsl_support())
-				useglslmat = true;
-			else if (gs.matmode == GAME_MAT_GLSL)
-				usemat = false;
-
-			if (usemat)
-				sceneconverter->SetMaterials(true);
-			if (useglslmat && (gs.matmode == GAME_MAT_GLSL))
-				sceneconverter->SetGLSLMaterials(true);
 			if (scene->gm.flag & GAME_NO_MATERIAL_CACHING)
 				sceneconverter->SetCacheMaterials(false);
 					
@@ -576,8 +554,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 #ifdef WITH_PYTHON
 				if (python_main) MEM_freeN(python_main);
 #endif  /* WITH_PYTHON */
-
-				gs = *(ketsjiengine->GetGlobalSettings());
 
 				// when exiting the mainloop
 #ifdef WITH_PYTHON

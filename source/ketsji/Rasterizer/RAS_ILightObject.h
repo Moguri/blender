@@ -76,7 +76,6 @@ public:
 	
 	bool	m_nodiffuse;
 	bool	m_nospecular;
-	bool	m_glsl;
 
 	virtual ~RAS_ILightObject() {}
 	virtual RAS_ILightObject* Clone() = 0;
