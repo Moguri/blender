@@ -32,7 +32,6 @@ set(INC
 	../Ketsji/KXNetwork
 	../Network
 	../Network/LoopBackNetwork
-	../Physics/Bullet
 	../Physics/Dummy
 	../Physics/common
 	../Rasterizer
@@ -104,13 +103,6 @@ set(SRC
 	KX_LibLoadStatus.h
 	KX_SoftBodyDeformer.h
 )
-
-if(WITH_BULLET)
-	list(APPEND INC_SYS
-		${BULLET_INCLUDE_DIRS}
-	)
-	add_definitions(-DWITH_BULLET)
-endif()
 
 if(WITH_AUDASPACE)
 	add_definitions(${AUDASPACE_DEFINITIONS})

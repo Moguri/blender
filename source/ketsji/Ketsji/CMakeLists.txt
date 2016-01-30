@@ -251,14 +251,4 @@ if(WITH_AUDASPACE)
 	)
 endif()
 
-if(WITH_BULLET)
-	list(APPEND INC
-		../Physics/Bullet
-	)
-	list(APPEND INC_SYS
-		${BULLET_INCLUDE_DIRS}
-	)
-	add_definitions(-DWITH_BULLET)
-endif()
-
 blender_add_lib(ge_logic_ketsji "${SRC}" "${INC}" "${INC_SYS}")

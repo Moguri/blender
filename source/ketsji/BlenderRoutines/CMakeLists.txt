@@ -7,7 +7,6 @@ set(INC
 	../Ketsji
 	../Network
 	../Network/LoopBackNetwork
-	../Physics/Bullet
 	../Physics/common
 	../Rasterizer
 	../Rasterizer/RAS_OpenGLRasterizer
@@ -65,13 +64,6 @@ endif()
 
 if(WITH_CODEC_FFMPEG)
 	add_definitions(-DWITH_FFMPEG)
-endif()
-
-if(WITH_BULLET)
-	list(APPEND INC_SYS
-		${BULLET_INCLUDE_DIRS}
-	)
-	add_definitions(-DWITH_BULLET)
 endif()
 
 
