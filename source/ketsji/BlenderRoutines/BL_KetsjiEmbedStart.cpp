@@ -73,6 +73,7 @@ extern "C" {
 	#include "DNA_scene_types.h"
 	#include "DNA_windowmanager_types.h"
 
+	#include "BKE_blender.h"
 	#include "BKE_global.h"
 	#include "BKE_report.h"
 	#include "BKE_ipo.h"
@@ -89,6 +90,8 @@ extern "C" {
 
 	#include "BLI_blenlib.h"
 	#include "BLO_readfile.h"
+	#include "BLO_undofile.h"
+	#include "BLO_writefile.h"
 
 	#include "../../blender/windowmanager/WM_types.h"
 	#include "../../blender/windowmanager/wm_window.h"
@@ -220,7 +223,11 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 	struct wmWindowManager *wm= CTX_wm_manager(C);
 	struct wmWindow *win= CTX_wm_window(C);
 	struct Scene *startscene= CTX_data_scene(C);
-	struct Main* maggie1= CTX_data_main(C);
+	struct Main* blenderdata= CTX_data_main(C);
+	struct MemFile *memfile = (MemFile*)MEM_callocN(sizeof(MemFile), "Ketsji Restore Point");
+
+	// Save out main to a MemFile to restore on engine exit
+	BLO_write_file_mem(blenderdata, NULL, memfile, G.fileflags);
 
 
 	RAS_Rect area_rect;
@@ -230,7 +237,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 	area_rect.SetTop(cam_frame->ymax);
 
 	int exitrequested = KX_EXIT_REQUEST_NO_REQUEST;
-	Main* blenderdata = maggie1;
 
 	char* startscenename = startscene->id.name+2;
 	char pathname[FILE_MAXDIR+FILE_MAXFILE], oldsce[FILE_MAXDIR+FILE_MAXFILE];
@@ -656,6 +662,9 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 	if (bfd) BLO_blendfiledata_free(bfd);
 
 	BLI_strncpy(G.main->name, oldsce, sizeof(G.main->name));
+
+	// Restore main from MemFile
+	BKE_read_file_from_memfile(C, memfile, NULL);
 
 #ifdef WITH_PYTHON
 	PyDict_Clear(pyGlobalDict);

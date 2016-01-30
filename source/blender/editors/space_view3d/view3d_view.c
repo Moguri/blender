@@ -1703,6 +1703,7 @@ static int game_engine_exec(bContext *C, wmOperator *op)
 	RestoreState(C, prevwin);
 
 	//XXX restore_all_scene_cfra(scene_cfra_store);
+	startscene = CTX_data_scene(C);
 	BKE_scene_set_background(CTX_data_main(C), startscene);
 	//XXX BKE_scene_update_for_newframe(bmain->eval_ctx, bmain, scene, scene->lay);
 
