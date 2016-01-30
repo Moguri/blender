@@ -43,7 +43,3 @@ add_subdirectory(Physics/Dummy)
 add_subdirectory(Rasterizer)
 add_subdirectory(Rasterizer/RAS_OpenGLRasterizer)
 add_subdirectory(SceneGraph)
-
-if(WITH_PLAYER)
-	add_subdirectory(GamePlayer)
-endif()
