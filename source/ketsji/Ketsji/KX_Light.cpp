@@ -53,15 +53,13 @@
 #include "BLI_math.h"
 
 KX_LightObject::KX_LightObject(void* sgReplicationInfo,SG_Callbacks callbacks,
-                               RAS_IRasterizer* rasterizer,
                                RAS_ILightObject* lightobj)
-	: KX_GameObject(sgReplicationInfo,callbacks),
-	  m_rasterizer(rasterizer)
+	: KX_GameObject(sgReplicationInfo,callbacks)
 {
-	m_lightobj = lightobj;
-	m_lightobj->m_scene = sgReplicationInfo;
-	m_lightobj->m_light = this;
-	m_rasterizer->AddLight(m_lightobj);
+	m_lightobj = NULL;
+	//m_lightobj = lightobj;
+	//m_lightobj->m_scene = sgReplicationInfo;
+	//m_lightobj->m_light = this;
 	m_blenderscene = ((KX_Scene*)sgReplicationInfo)->GetBlenderScene();
 	m_base = NULL;
 };
@@ -70,7 +68,6 @@ KX_LightObject::KX_LightObject(void* sgReplicationInfo,SG_Callbacks callbacks,
 KX_LightObject::~KX_LightObject()
 {
 	if (m_lightobj) {
-		m_rasterizer->RemoveLight(m_lightobj);
 		delete(m_lightobj);
 	}
 
@@ -88,9 +85,8 @@ CValue*		KX_LightObject::GetReplica()
 
 	replica->ProcessReplica();
 	
-	replica->m_lightobj = m_lightobj->Clone();
-	replica->m_lightobj->m_light = replica;
-	m_rasterizer->AddLight(replica->m_lightobj);
+	//replica->m_lightobj = m_lightobj->Clone();
+	//replica->m_lightobj->m_light = replica;
 	if (m_base)
 		m_base = NULL;
 
@@ -99,7 +95,7 @@ CValue*		KX_LightObject::GetReplica()
 
 void KX_LightObject::UpdateScene(KX_Scene *kxscene)
 {
-	m_lightobj->m_scene = (void*)kxscene;
+	//m_lightobj->m_scene = (void*)kxscene;
 	m_blenderscene = kxscene->GetBlenderScene();
 	m_base = BKE_scene_base_add(m_blenderscene, GetBlenderObject());
 }
@@ -107,7 +103,7 @@ void KX_LightObject::UpdateScene(KX_Scene *kxscene)
 void KX_LightObject::SetLayer(int layer)
 {
 	KX_GameObject::SetLayer(layer);
-	m_lightobj->m_layer = layer;
+	//m_lightobj->m_layer = layer;
 }
 
 #ifdef WITH_PYTHON

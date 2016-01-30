@@ -40,7 +40,6 @@ struct GPULamp;
 struct Scene;
 struct Base;
 class KX_Camera;
-class RAS_IRasterizer;
 class RAS_ILightObject;
 class MT_Transform;
 
@@ -49,12 +48,11 @@ class KX_LightObject : public KX_GameObject
 	Py_Header
 protected:
 	RAS_ILightObject*		m_lightobj;
-	class RAS_IRasterizer*	m_rasterizer;	//needed for registering and replication of lightobj
 	Scene*				m_blenderscene;
 	Base*				m_base;
 
 public:
-	KX_LightObject(void* sgReplicationInfo,SG_Callbacks callbacks,RAS_IRasterizer* rasterizer,RAS_ILightObject*	lightobj);
+	KX_LightObject(void* sgReplicationInfo,SG_Callbacks callbacks,RAS_ILightObject*	lightobj);
 	virtual ~KX_LightObject();
 	virtual CValue*		GetReplica();
 	RAS_ILightObject*	GetLightData() { return m_lightobj;}

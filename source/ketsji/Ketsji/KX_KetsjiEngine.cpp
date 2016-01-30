@@ -47,16 +47,12 @@
 #include "EXP_BoolValue.h"
 #include "EXP_FloatValue.h"
 
-#include "RAS_BucketManager.h"
 #include "RAS_Rect.h"
-#include "RAS_IRasterizer.h"
 #include "RAS_ICanvas.h"
-#include "RAS_ILightObject.h"
 #include "MT_Vector3.h"
 #include "MT_Transform.h"
 #include "SCA_IInputDevice.h"
 #include "KX_Camera.h"
-#include "KX_Dome.h"
 #include "KX_Light.h"
 #include "KX_PythonInit.h"
 #include "KX_PyConstraintBinding.h"
@@ -125,7 +121,6 @@ short  KX_KetsjiEngine::m_exitkey = 130; //ESC Key
  */
 KX_KetsjiEngine::KX_KetsjiEngine(KX_ISystem* system)
 	:	m_canvas(NULL),
-	m_rasterizer(NULL),
 	m_kxsystem(system),
 	m_sceneconverter(NULL),
 	m_networkdevice(NULL),
@@ -182,9 +177,7 @@ KX_KetsjiEngine::KX_KetsjiEngine(KX_ISystem* system)
 	m_overrideFrameColor(false),
 	m_overrideFrameColorR(0.0f),
 	m_overrideFrameColorG(0.0f),
-	m_overrideFrameColorB(0.0f),
-
-	m_usedome(false)
+	m_overrideFrameColorB(0.0f)
 {
 	// Initialize the time logger
 	m_logger = new KX_TimeCategoryLogger (25);
@@ -209,8 +202,6 @@ KX_KetsjiEngine::KX_KetsjiEngine(KX_ISystem* system)
 KX_KetsjiEngine::~KX_KetsjiEngine()
 {
 	delete m_logger;
-	if (m_usedome)
-		delete m_dome;
 
 #ifdef WITH_PYTHON
 	Py_CLEAR(m_pyprofiledict);
@@ -253,14 +244,6 @@ void KX_KetsjiEngine::SetCanvas(RAS_ICanvas* canvas)
 	m_canvas = canvas;
 }
 
-
-
-void KX_KetsjiEngine::SetRasterizer(RAS_IRasterizer* rasterizer)
-{
-	MT_assert(rasterizer);
-	m_rasterizer = rasterizer;
-}
-
 #ifdef WITH_PYTHON
 /*
  * At the moment the bge.logic module is imported into 'pythondictionary' after this function is called.
@@ -284,134 +267,6 @@ void KX_KetsjiEngine::SetSceneConverter(KX_ISceneConverter* sceneconverter)
 {
 	MT_assert(sceneconverter);
 	m_sceneconverter = sceneconverter;
-}
-
-void KX_KetsjiEngine::InitDome(short res, short mode, short angle, float resbuf, short tilt, struct Text* text)
-{
-	m_dome = new KX_Dome(m_canvas, m_rasterizer,this, res, mode, angle, resbuf, tilt, text);
-	m_usedome = true;
-}
-
-void KX_KetsjiEngine::RenderDome()
-{
-	const GLint *viewport = m_canvas->GetViewPort();
-	
-	m_dome->SetViewPort(viewport);
-
-	KX_Scene* firstscene = *m_scenes.begin();
-	const RAS_FrameSettings &framesettings = firstscene->GetFramingType();
-
-	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
-
-	// hiding mouse cursor each frame
-	// (came back when going out of focus and then back in again)
-	if (m_hideCursor)
-		m_canvas->SetMouseState(RAS_ICanvas::MOUSE_INVISIBLE);
-
-	// clear the entire game screen with the border color
-	// only once per frame
-
-	m_canvas->BeginDraw();
-
-	// BeginFrame() sets the actual drawing area. You can use a part of the window
-	if (!BeginFrame())
-		return;
-
-	KX_SceneList::iterator sceneit;
-	KX_Scene* scene = NULL;
-
-	int n_renders=m_dome->GetNumberRenders();// usually 4 or 6
-	for (int i=0;i<n_renders;i++) {
-		m_canvas->ClearBuffer(RAS_ICanvas::COLOR_BUFFER|RAS_ICanvas::DEPTH_BUFFER);
-		for (sceneit = m_scenes.begin();sceneit != m_scenes.end(); sceneit++)
-		// for each scene, call the proceed functions
-		{
-			scene = *sceneit;
-			KX_SetActiveScene(scene);
-			KX_Camera* cam = scene->GetActiveCamera();
-
-			// pass the scene's worldsettings to the rasterizer
-			scene->GetWorldInfo()->UpdateWorldSettings();
-
-			// shadow buffers
-			if (i == 0) {
-				RenderShadowBuffers(scene);
-			}
-			// Avoid drawing the scene with the active camera twice when it's viewport is enabled
-			if (cam && !cam->GetViewport())
-			{
-				if (scene->IsClearingZBuffer())
-					m_rasterizer->ClearDepthBuffer();
-		
-				m_rasterizer->SetAuxilaryClientInfo(scene);
-		
-				// do the rendering
-				m_dome->RenderDomeFrame(scene,cam, i);
-				//render all the font objects for this scene
-				scene->RenderFonts();
-			}
-			
-			list<class KX_Camera*>* cameras = scene->GetCameras();
-			
-			// Draw the scene once for each camera with an enabled viewport
-			list<KX_Camera*>::iterator it = cameras->begin();
-			while (it != cameras->end()) {
-				if ((*it)->GetViewport())
-				{
-					if (scene->IsClearingZBuffer())
-						m_rasterizer->ClearDepthBuffer();
-			
-					m_rasterizer->SetAuxilaryClientInfo(scene);
-			
-					// do the rendering
-					m_dome->RenderDomeFrame(scene, (*it),i);
-					//render all the font objects for this scene
-					scene->RenderFonts();
-				}
-				
-				it++;
-			}
-			// Part of PostRenderScene()
-			m_rasterizer->MotionBlur();
-			scene->Render2DFilters(m_canvas);
-			// no RunDrawingCallBacks
-			// no FlushDebugLines
-		}
-		m_dome->BindImages(i);
-	}
-
-	m_canvas->EndFrame();//XXX do we really need that?
-
-	m_canvas->SetViewPort(0, 0, m_canvas->GetWidth(), m_canvas->GetHeight());
-
-	if (m_overrideFrameColor) //XXX why do we want
-	{
-		// Do not use the framing bar color set in the Blender scenes
-		m_canvas->ClearColor(
-			m_overrideFrameColorR,
-			m_overrideFrameColorG,
-			m_overrideFrameColorB,
-			1.0
-			);
-	}
-	else
-	{
-		// Use the framing bar color set in the Blender scenes
-		m_canvas->ClearColor(
-			framesettings.BarRed(),
-			framesettings.BarGreen(),
-			framesettings.BarBlue(),
-			1.0
-			);
-	}
-	m_dome->Draw();
-
-	// Draw Callback for the last scene
-#ifdef WITH_PYTHON
-	PHY_SetActiveEnvironment(scene->GetPhysicsEnvironment());
-	scene->RunDrawingCallbacks(scene->GetPostDrawCB());
-#endif
-	EndFrame();
 }
 
 /**
@@ -449,117 +304,6 @@ void KX_KetsjiEngine::StartEngine(bool clearIpo)
 		m_sceneconverter->WritePhysicsObjectToAnimationIpo(m_currentFrame);
 	}
 
-}
-
-void KX_KetsjiEngine::ClearFrame()
-{
-	// clear unless we're drawing overlapping stereo
-	if (m_rasterizer->InterlacedStereo() &&
-		m_rasterizer->GetEye() == RAS_IRasterizer::RAS_STEREO_RIGHTEYE)
-		return;
-
-	// clear the viewports with the background color of the first scene
-	bool doclear = false;
-	KX_SceneList::iterator sceneit;
-	RAS_Rect clearvp, area, viewport;
-
-	for (sceneit = m_scenes.begin(); sceneit != m_scenes.end(); sceneit++)
-	{
-		KX_Scene* scene = *sceneit;
-		//const RAS_FrameSettings &framesettings = scene->GetFramingType();
-		list<class KX_Camera*>* cameras = scene->GetCameras();
-
-		list<KX_Camera*>::iterator it;
-		for (it = cameras->begin(); it != cameras->end(); it++)
-		{
-			GetSceneViewport(scene, (*it), area, viewport);
-
-			if (!doclear) {
-				clearvp = viewport;
-				doclear = true;
-			}
-			else {
-				if (viewport.GetLeft() < clearvp.GetLeft())
-					clearvp.SetLeft(viewport.GetLeft());
-				if (viewport.GetBottom() < clearvp.GetBottom())
-					clearvp.SetBottom(viewport.GetBottom());
-				if (viewport.GetRight() > clearvp.GetRight())
-					clearvp.SetRight(viewport.GetRight());
-				if (viewport.GetTop() > clearvp.GetTop())
-					clearvp.SetTop(viewport.GetTop());
-
-			}
-		}
-	}
-
-	if (doclear) {
-		KX_Scene* firstscene = *m_scenes.begin();
-		firstscene->GetWorldInfo()->UpdateBackGround();
-
-		m_canvas->SetViewPort(clearvp.GetLeft(), clearvp.GetBottom(),
-			clearvp.GetRight(), clearvp.GetTop());
-		m_rasterizer->ClearColorBuffer();
-	}
-}
-
-bool KX_KetsjiEngine::BeginFrame()
-{
-	// set the area used for rendering (stereo can assign only a subset)
-	m_rasterizer->SetRenderArea();
-
-	if (m_canvas->BeginDraw())
-	{
-		ClearFrame();
-
-		m_rasterizer->BeginFrame(m_kxsystem->GetTimeInSeconds());
-
-		return true;
-	}
-	
-	return false;
-}
-
-
-void KX_KetsjiEngine::EndFrame()
-{
-	m_rasterizer->MotionBlur();
-
-	// Show profiling info
-	m_logger->StartLog(tc_overhead, m_kxsystem->GetTimeInSeconds(), true);
-	if (m_show_framerate || m_show_profile || (m_show_debug_properties))
-	{
-		RenderDebugProperties();
-	}
-
-	double tottime = m_logger->GetAverage();
-	if (tottime < 1e-6)
-		tottime = 1e-6;
-
-#ifdef WITH_PYTHON
-	for (int i = tc_first; i < tc_numCategories; ++i) {
-		double time = m_logger->GetAverage((KX_TimeCategory)i);
-		PyObject *val = PyTuple_New(2);
-		PyTuple_SetItem(val, 0, PyFloat_FromDouble(time*1000.0));
-		PyTuple_SetItem(val, 1, PyFloat_FromDouble(time/tottime * 100.0));
-
-		PyDict_SetItemString(m_pyprofiledict, m_profileLabels[i], val);
-		Py_DECREF(val);
-	}
-#endif
-
-	m_average_framerate = 1.0/tottime;
-
-	// Go to next profiling measurement, time spend after this call is shown in the next frame.
-	m_logger->NextMeasurement(m_kxsystem->GetTimeInSeconds());
-
-	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
-	m_rasterizer->EndFrame();
-	// swap backbuffer (drawing into this buffer) <-> front/visible buffer
-	m_logger->StartLog(tc_latency, m_kxsystem->GetTimeInSeconds(), true);
-	m_rasterizer->SwapBuffers();
-	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
-	
-	m_canvas->EndDraw();
 }
 
 //#include "PIL_time.h"
@@ -785,164 +529,10 @@ bool KX_KetsjiEngine::NextFrame()
 	return doRender;
 }
 
-
-
-void KX_KetsjiEngine::Render()
-{
-	if (m_usedome) {
-		RenderDome();
-		return;
-	}
-	KX_Scene* firstscene = *m_scenes.begin();
-	const RAS_FrameSettings &framesettings = firstscene->GetFramingType();
-
-	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
-	SG_SetActiveStage(SG_STAGE_RENDER);
-
-	// hiding mouse cursor each frame
-	// (came back when going out of focus and then back in again)
-	if (m_hideCursor)
-		m_canvas->SetMouseState(RAS_ICanvas::MOUSE_INVISIBLE);
-
-	// clear the entire game screen with the border color
-	// only once per frame
-	m_canvas->BeginDraw();
-	if (m_rasterizer->GetDrawingMode() == RAS_IRasterizer::KX_TEXTURED) {
-		m_canvas->SetViewPort(0, 0, m_canvas->GetWidth(), m_canvas->GetHeight());
-		if (m_overrideFrameColor)
-		{
-			// Do not use the framing bar color set in the Blender scenes
-			m_canvas->ClearColor(
-				m_overrideFrameColorR,
-				m_overrideFrameColorG,
-				m_overrideFrameColorB,
-				1.0
-				);
-		}
-		else
-		{
-			// Use the framing bar color set in the Blender scenes
-			m_canvas->ClearColor(
-				framesettings.BarRed(),
-				framesettings.BarGreen(),
-				framesettings.BarBlue(),
-				1.0
-				);
-		}
-		// clear the -whole- viewport
-		m_canvas->ClearBuffer(RAS_ICanvas::COLOR_BUFFER|RAS_ICanvas::DEPTH_BUFFER);
-	}
-
-	m_rasterizer->SetEye(RAS_IRasterizer::RAS_STEREO_LEFTEYE);
-
-	// BeginFrame() sets the actual drawing area. You can use a part of the window
-	if (!BeginFrame())
-		return;
-
-	KX_SceneList::iterator sceneit;
-	for (sceneit = m_scenes.begin();sceneit != m_scenes.end(); sceneit++)
-	// for each scene, call the proceed functions
-	{
-		KX_Scene* scene = *sceneit;
-		KX_Camera* cam = scene->GetActiveCamera();
-		// pass the scene's worldsettings to the rasterizer
-		scene->GetWorldInfo()->UpdateWorldSettings();
-
-		// this is now done incrementatlly in KX_Scene::CalculateVisibleMeshes
-		//scene->UpdateMeshTransformations();
-
-		// shadow buffers
-		RenderShadowBuffers(scene);
-
-		// Avoid drawing the scene with the active camera twice when it's viewport is enabled
-		if (cam && !cam->GetViewport())
-		{
-			if (scene->IsClearingZBuffer())
-				m_rasterizer->ClearDepthBuffer();
-	
-			m_rasterizer->SetAuxilaryClientInfo(scene);
-	
-			// do the rendering
-			RenderFrame(scene, cam);
-		}
-		
-		list<class KX_Camera*>* cameras = scene->GetCameras();
-		
-		// Draw the scene once for each camera with an enabled viewport
-		list<KX_Camera*>::iterator it = cameras->begin();
-		while (it != cameras->end()) {
-			if ((*it)->GetViewport())
-			{
-				if (scene->IsClearingZBuffer())
-					m_rasterizer->ClearDepthBuffer();
-		
-				m_rasterizer->SetAuxilaryClientInfo(scene);
-		
-				// do the rendering
-				RenderFrame(scene, (*it));
-			}
-			
-			it++;
-		}
-		PostRenderScene(scene);
-	}
-
-	// only one place that checks for stereo
-	if (m_rasterizer->Stereo())
-	{
-		m_rasterizer->SetEye(RAS_IRasterizer::RAS_STEREO_RIGHTEYE);
-
-		if (!BeginFrame())
-			return;
-
-
-		for (sceneit = m_scenes.begin();sceneit != m_scenes.end(); sceneit++)
-		// for each scene, call the proceed functions
-		{
-			KX_Scene* scene = *sceneit;
-			KX_Camera* cam = scene->GetActiveCamera();
-
-			// pass the scene's worldsettings to the rasterizer
-			scene->GetWorldInfo()->UpdateWorldSettings();
-		
-			if (scene->IsClearingZBuffer())
-				m_rasterizer->ClearDepthBuffer();
-
-			//pass the scene, for picking and raycasting (shadows)
-			m_rasterizer->SetAuxilaryClientInfo(scene);
-
-			// do the rendering
-			//RenderFrame(scene);
-			RenderFrame(scene, cam);
-
-			list<class KX_Camera*>* cameras = scene->GetCameras();
-	
-			// Draw the scene once for each camera with an enabled viewport
-			list<KX_Camera*>::iterator it = cameras->begin();
-			while (it != cameras->end()) {
-				if ((*it)->GetViewport())
-				{
-					if (scene->IsClearingZBuffer())
-						m_rasterizer->ClearDepthBuffer();
-			
-					m_rasterizer->SetAuxilaryClientInfo(scene);
-			
-					// do the rendering
-					RenderFrame(scene, (*it));
-				}
-				
-				it++;
-			}
-			PostRenderScene(scene);
-		}
-	} // if (m_rasterizer->Stereo())
-
-	EndFrame();
-}
-
 void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 {
-	Scene *blenderscene = m_scenes[0]->GetBlenderScene();
+	KX_Scene *kxscene = m_scenes[0];
+	Scene *blenderscene = kxscene->GetBlenderScene();
 
 	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
 	SG_SetActiveStage(SG_STAGE_RENDER);
@@ -992,6 +582,8 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 	}
 
 	GPU_offscreen_free(ofs);
+
+	PostRenderScene(kxscene);
 	m_canvas->SwapBuffers();
 }
 
@@ -1081,6 +673,8 @@ void KX_KetsjiEngine::SetCameraOverrideZoom(float camzoom)
 
 void KX_KetsjiEngine::GetSceneViewport(KX_Scene *scene, KX_Camera* cam, RAS_Rect& area, RAS_Rect& viewport)
 {
+	printf("KX_KetsjiEngine::GetSceneViewport() is no longer implemented");
+#if 0
 	// In this function we make sure the rasterizer settings are upto
 	// date. We compute the viewport so that logic
 	// using this information is upto date.
@@ -1124,6 +718,7 @@ void KX_KetsjiEngine::GetSceneViewport(KX_Scene *scene, KX_Camera* cam, RAS_Rect
 
 		area = m_canvas->GetDisplayArea();
 	}
+#endif
 }
 
 void KX_KetsjiEngine::UpdateAnimations(KX_Scene *scene)
@@ -1147,210 +742,6 @@ void KX_KetsjiEngine::UpdateAnimations(KX_Scene *scene)
 		scene->UpdateAnimations(m_frameTime);
 }
 
-void KX_KetsjiEngine::RenderShadowBuffers(KX_Scene *scene)
-{
-	CListValue *lightlist = scene->GetLightList();
-	int i, drawmode;
-
-	m_rasterizer->SetAuxilaryClientInfo(scene);
-
-	for (i=0; i<lightlist->GetCount(); i++) {
-		KX_GameObject *gameobj = (KX_GameObject*)lightlist->GetValue(i);
-
-		KX_LightObject *light = (KX_LightObject*)gameobj;
-		RAS_ILightObject *raslight = light->GetLightData();
-
-		raslight->Update();
-
-		if (m_rasterizer->GetDrawingMode() == RAS_IRasterizer::KX_TEXTURED && raslight->HasShadowBuffer()) {
-			/* make temporary camera */
-			RAS_CameraData camdata = RAS_CameraData();
-			KX_Camera *cam = new KX_Camera(scene, scene->m_callbacks, camdata, true, true);
-			cam->SetName("__shadow__cam__");
-
-			MT_Transform camtrans;
-
-			/* switch drawmode for speed */
-			drawmode = m_rasterizer->GetDrawingMode();
-			m_rasterizer->SetDrawingMode(RAS_IRasterizer::KX_SHADOW);
-
-			/* binds framebuffer object, sets up camera .. */
-			raslight->BindShadowBuffer(m_canvas, cam, camtrans);
-
-			/* update scene */
-			scene->CalculateVisibleMeshes(m_rasterizer, cam, raslight->GetShadowLayer());
-
-			m_logger->StartLog(tc_animations, m_kxsystem->GetTimeInSeconds(), true);
-			SG_SetActiveStage(SG_STAGE_ANIMATION_UPDATE);
-			UpdateAnimations(scene);
-			m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
-			SG_SetActiveStage(SG_STAGE_RENDER);
-
-			/* render */
-			m_rasterizer->ClearDepthBuffer();
-			m_rasterizer->ClearColorBuffer();
-			scene->RenderBuckets(camtrans, m_rasterizer);
-
-			/* unbind framebuffer object, restore drawmode, free camera */
-			raslight->UnbindShadowBuffer();
-			m_rasterizer->SetDrawingMode(drawmode);
-			cam->Release();
-		}
-	}
-}
-	
-// update graphics
-void KX_KetsjiEngine::RenderFrame(KX_Scene* scene, KX_Camera* cam)
-{
-	bool override_camera;
-	RAS_Rect viewport, area;
-	float nearfrust, farfrust, focallength;
-//	KX_Camera* cam = scene->GetActiveCamera();
-	
-	if (!cam)
-		return;
-
-	KX_SetActiveScene(scene);
-
-#ifdef WITH_PYTHON
-	scene->RunDrawingCallbacks(scene->GetPreDrawSetupCB());
-#endif
-
-	GetSceneViewport(scene, cam, area, viewport);
-
-	// store the computed viewport in the scene
-	scene->SetSceneViewport(viewport);
-
-	// set the viewport for this frame and scene
-	m_canvas->SetViewPort(viewport.GetLeft(), viewport.GetBottom(),
-		viewport.GetRight(), viewport.GetTop());
-	
-	// see KX_BlenderMaterial::Activate
-	//m_rasterizer->SetAmbient();
-	m_rasterizer->DisplayFog();
-
-	override_camera = m_overrideCam && (scene->GetName() == m_overrideSceneName);
-	override_camera = override_camera && (cam->GetName() == "__default__cam__");
-
-	if (override_camera && m_overrideCamUseOrtho) {
-		m_rasterizer->SetProjectionMatrix(m_overrideCamProjMat);
-		if (!cam->hasValidProjectionMatrix()) {
-			// needed to get frustrum planes for culling
-			MT_Matrix4x4 projmat;
-			projmat.setValue(m_overrideCamProjMat.getPointer());
-			cam->SetProjectionMatrix(projmat);
-		}
-	} else if (cam->hasValidProjectionMatrix())
-	{
-		m_rasterizer->SetProjectionMatrix(cam->GetProjectionMatrix());
-	} else
-	{
-		RAS_FrameFrustum frustum;
-		bool orthographic = !cam->GetCameraData()->m_perspective;
-		nearfrust = cam->GetCameraNear();
-		farfrust = cam->GetCameraFar();
-		focallength = cam->GetFocalLength();
-		MT_Matrix4x4 projmat;
-
-		if (override_camera) {
-			nearfrust = m_overrideCamNear;
-			farfrust = m_overrideCamFar;
-		}
-
-		float camzoom = override_camera ? m_overrideCamZoom : m_cameraZoom;
-		if (orthographic) {
-
-			RAS_FramingManager::ComputeOrtho(
-				scene->GetFramingType(),
-				area,
-				viewport,
-				cam->GetScale(),
-				nearfrust,
-				farfrust,
-				cam->GetSensorFit(),
-				cam->GetShiftHorizontal(),
-				cam->GetShiftVertical(),
-				frustum
-			);
-			if (!cam->GetViewport()) {
-				frustum.x1 *= camzoom;
-				frustum.x2 *= camzoom;
-				frustum.y1 *= camzoom;
-				frustum.y2 *= camzoom;
-			}
-			projmat = m_rasterizer->GetOrthoMatrix(
-				frustum.x1, frustum.x2, frustum.y1, frustum.y2, frustum.camnear, frustum.camfar);
-
-		} else {
-			RAS_FramingManager::ComputeFrustum(
-				scene->GetFramingType(),
-				area,
-				viewport,
-				cam->GetLens(),
-				cam->GetSensorWidth(),
-				cam->GetSensorHeight(),
-				cam->GetSensorFit(),
-				cam->GetShiftHorizontal(),
-				cam->GetShiftVertical(),
-				nearfrust,
-				farfrust,
-				frustum
-			);
-
-			if (!cam->GetViewport()) {
-				frustum.x1 *= camzoom;
-				frustum.x2 *= camzoom;
-				frustum.y1 *= camzoom;
-				frustum.y2 *= camzoom;
-			}
-			projmat = m_rasterizer->GetFrustumMatrix(
-				frustum.x1, frustum.x2, frustum.y1, frustum.y2, frustum.camnear, frustum.camfar, focallength);
-		}
-		cam->SetProjectionMatrix(projmat);
-		
-		// Otherwise the projection matrix for each eye will be the same...
-		if (!orthographic && m_rasterizer->Stereo())
-			cam->InvalidateProjectionMatrix();
-	}
-
-	MT_Transform camtrans(cam->GetWorldToCamera());
-	MT_Matrix4x4 viewmat(camtrans);
-	
-	m_rasterizer->SetViewMatrix(viewmat, cam->NodeGetWorldOrientation(), cam->NodeGetWorldPosition(), cam->GetCameraData()->m_perspective);
-	cam->SetModelviewMatrix(viewmat);
-
-	// The following actually reschedules all vertices to be
-	// redrawn. There is a cache between the actual rescheduling
-	// and this call though. Visibility is imparted when this call
-	// runs through the individual objects.
-
-	m_logger->StartLog(tc_scenegraph, m_kxsystem->GetTimeInSeconds(), true);
-	SG_SetActiveStage(SG_STAGE_CULLING);
-
-	scene->CalculateVisibleMeshes(m_rasterizer,cam);
-
-	m_logger->StartLog(tc_animations, m_kxsystem->GetTimeInSeconds(), true);
-	SG_SetActiveStage(SG_STAGE_ANIMATION_UPDATE);
-	UpdateAnimations(scene);
-
-	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
-	SG_SetActiveStage(SG_STAGE_RENDER);
-
-#ifdef WITH_PYTHON
-	PHY_SetActiveEnvironment(scene->GetPhysicsEnvironment());
-	// Run any pre-drawing python callbacks
-	scene->RunDrawingCallbacks(scene->GetPreDrawCB());
-#endif
-
-	scene->RenderBuckets(camtrans, m_rasterizer);
-
-	//render all the font objects for this scene
-	scene->RenderFonts();
-
-	if (scene->GetPhysicsEnvironment())
-		scene->GetPhysicsEnvironment()->DebugDrawWorld();
-}
-
 /*
  * To run once per scene
  */
@@ -1360,16 +751,13 @@ void KX_KetsjiEngine::PostRenderScene(KX_Scene* scene)
 
 	// We need to first make sure our viewport is correct (enabling multiple viewports can mess this up)
 	m_canvas->SetViewPort(0, 0, m_canvas->GetWidth(), m_canvas->GetHeight());
-	
-	m_rasterizer->FlushDebugShapes(scene);
-	scene->Render2DFilters(m_canvas);
 
 #ifdef WITH_PYTHON
 	PHY_SetActiveEnvironment(scene->GetPhysicsEnvironment());
 	scene->RunDrawingCallbacks(scene->GetPostDrawCB());
 
 	// Python draw callback can also call debug draw functions, so we have to clear debug shapes.
-	m_rasterizer->FlushDebugShapes(scene);
+	//m_rasterizer->FlushDebugShapes(scene);
 #endif
 }
 
@@ -1392,9 +780,6 @@ void KX_KetsjiEngine::StopEngine()
 			m_sceneconverter->RemoveScene(scene);
 		}
 		m_scenes.clear();
-
-		// cleanup all the stuff
-		m_rasterizer->Exit();
 	}
 }
 
@@ -1457,170 +842,6 @@ void KX_KetsjiEngine::PostProcessScene(KX_Scene* scene)
 	}
 	
 	scene->UpdateParents(0.0);
-}
-
-
-
-void KX_KetsjiEngine::RenderDebugProperties()
-{
-	STR_String debugtxt;
-	int title_xmargin = -7;
-	int title_y_top_margin = 4;
-	int title_y_bottom_margin = 2;
-
-	int const_xindent = 4;
-	int const_ysize = 14;
-
-	int xcoord = 12;	// mmmm, these constants were taken from blender source
-	int ycoord = 17;	// to 'mimic' behavior
-	
-	int profile_indent = 72;
-
-	float tottime = m_logger->GetAverage();
-	if (tottime < 1e-6f) {
-		tottime = 1e-6f;
-	}
-
-	// Set viewport to entire canvas
-	RAS_Rect viewport;
-	m_canvas->SetViewPort(0, 0, int(m_canvas->GetWidth()), int(m_canvas->GetHeight()));
-	
-	if (m_show_framerate || m_show_profile) {
-		/* Title for profiling("Profile") */
-		m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-		                            "Profile",
-		                            xcoord + const_xindent + title_xmargin, // Adds the constant x indent (0 for now) to the title x margin
-		                            ycoord,
-		                            m_canvas->GetWidth() /* RdV, TODO ?? */,
-		                            m_canvas->GetHeight() /* RdV, TODO ?? */);
-
-		// Increase the indent by default increase
-		ycoord += const_ysize;
-		// Add the title indent afterwards
-		ycoord += title_y_bottom_margin;
-	}
-
-	/* Framerate display */
-	if (m_show_framerate) {
-		m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-		                            "Frametime :",
-		                            xcoord + const_xindent,
-		                            ycoord,
-		                            m_canvas->GetWidth() /* RdV, TODO ?? */,
-		                            m_canvas->GetHeight() /* RdV, TODO ?? */);
-		
-		debugtxt.Format("%5.1fms (%.1ffps)", tottime * 1000.0f, 1.0f/tottime);
-		m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-		                            debugtxt.ReadPtr(),
-		                            xcoord + const_xindent + profile_indent,
-		                            ycoord,
-		                            m_canvas->GetWidth() /* RdV, TODO ?? */,
-		                            m_canvas->GetHeight() /* RdV, TODO ?? */);
-		// Increase the indent by default increase
-		ycoord += const_ysize;
-	}
-
-	/* Profile display */
-	if (m_show_profile) {
-		for (int j = tc_first; j < tc_numCategories; j++) {
-			m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-			                            m_profileLabels[j],
-			                            xcoord + const_xindent,
-			                            ycoord,
-			                            m_canvas->GetWidth(),
-			                            m_canvas->GetHeight());
-
-			double time = m_logger->GetAverage((KX_TimeCategory)j);
-
-			debugtxt.Format("%5.2fms | %d%%", (float)time*1000.f, (int)((float)time/tottime * 100.f));
-			m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-			                            debugtxt.ReadPtr(),
-			                            xcoord + const_xindent + profile_indent, ycoord,
-			                            m_canvas->GetWidth(),
-			                            m_canvas->GetHeight());
-
-			m_rasterizer->RenderBox2D(xcoord + (int)(2.2f * profile_indent), ycoord, m_canvas->GetWidth(), m_canvas->GetHeight(), (float)time/tottime);
-			ycoord += const_ysize;
-		}
-	}
-	// Add the ymargin for titles below the other section of debug info
-	ycoord += title_y_top_margin;
-
-	/* Property display*/
-	if (m_show_debug_properties) {
-
-		/* Title for debugging("Debug properties") */
-		m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-		                            "Debug Properties",
-		                            xcoord + const_xindent + title_xmargin, // Adds the constant x indent (0 for now) to the title x margin
-		                            ycoord,
-		                            m_canvas->GetWidth() /* RdV, TODO ?? */,
-		                            m_canvas->GetHeight() /* RdV, TODO ?? */);
-
-		// Increase the indent by default increase
-		ycoord += const_ysize;
-		// Add the title indent afterwards
-		ycoord += title_y_bottom_margin;
-
-		/* Calculate amount of properties that can displayed. */
-		unsigned propsAct = 0;
-		unsigned propsMax = (m_canvas->GetHeight() - ycoord) / const_ysize;
-
-		KX_SceneList::iterator sceneit;
-		for (sceneit = m_scenes.begin();sceneit != m_scenes.end(); sceneit++) {
-			KX_Scene* scene = *sceneit;
-			/* the 'normal' debug props */
-			vector<SCA_DebugProp*>& debugproplist = scene->GetDebugProperties();
-			
-			for (unsigned i=0; i < debugproplist.size() && propsAct < propsMax; i++)
-			{
-				CValue *propobj = debugproplist[i]->m_obj;
-				STR_String objname = propobj->GetName();
-				STR_String propname = debugproplist[i]->m_name;
-				propsAct++;
-				if (propname == "__state__") {
-					// reserve name for object state
-					KX_GameObject* gameobj = static_cast<KX_GameObject*>(propobj);
-					unsigned int state = gameobj->GetState();
-					debugtxt = objname + "." + propname + " = ";
-					bool first = true;
-					for (int statenum=1;state;state >>= 1, statenum++)
-					{
-						if (state & 1)
-						{
-							if (!first)
-							{
-								debugtxt += ",";
-							}
-							debugtxt += STR_String(statenum);
-							first = false;
-						}
-					}
-					m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-					                            debugtxt.ReadPtr(),
-					                            xcoord + const_xindent,
-					                            ycoord,
-					                            m_canvas->GetWidth(),
-					                            m_canvas->GetHeight());
-					ycoord += const_ysize;
-				}
-				else {
-					CValue *propval = propobj->GetProperty(propname);
-					if (propval) {
-						STR_String text = propval->GetText();
-						debugtxt = objname + ": '" + propname + "' = " + text;
-						m_rasterizer->RenderText2D(RAS_IRasterizer::RAS_TEXT_PADDED,
-						                            debugtxt.ReadPtr(),
-						                            xcoord + const_xindent,
-						                            ycoord,
-						                            m_canvas->GetWidth(),
-						                            m_canvas->GetHeight());
-						ycoord += const_ysize;
-					}
-				}
-			}
-		}
-	}
 }
 
 
@@ -1716,7 +937,6 @@ KX_Scene* KX_KetsjiEngine::CreateScene(Scene *scene, bool libloading)
 									  m_canvas);
 
 	m_sceneconverter->ConvertScene(tmpscene,
-							  m_rasterizer,
 							  m_canvas,
 							  libloading);
 

@@ -71,7 +71,6 @@ class KX_KetsjiEngine
 
 private:
 	class RAS_ICanvas*					m_canvas; // 2D Canvas (2D Rendering Device Context)
-	class RAS_IRasterizer*				m_rasterizer;  // 3D Rasterizer (3D Rendering)
 	class KX_ISystem*					m_kxsystem;
 	class KX_ISceneConverter*			m_sceneconverter;
 	class NG_NetworkDeviceInterface*	m_networkdevice;
@@ -201,10 +200,7 @@ private:
 	/** Task scheduler for multi-threading */
 	TaskScheduler* m_taskscheduler;
 
-	void					RenderFrame(KX_Scene* scene, KX_Camera* cam);
 	void					PostRenderScene(KX_Scene* scene);
-	void					RenderDebugProperties();
-	void					RenderShadowBuffers(KX_Scene *scene);
 
 public:
 	KX_KetsjiEngine(class KX_ISystem* system);
@@ -215,7 +211,6 @@ public:
 	void			SetMouseDevice(SCA_IInputDevice* mousedevice);
 	void			SetNetworkDevice(NG_NetworkDeviceInterface* networkdevice);
 	void			SetCanvas(RAS_ICanvas* canvas);
-	void			SetRasterizer(RAS_IRasterizer* rasterizer);
 #ifdef WITH_PYTHON
 	void			SetPyNamespace(PyObject *pythondictionary);
 	PyObject*		GetPyNamespace() { return m_pythondictionary; }
@@ -228,22 +223,14 @@ public:
 	int getAnimRecordFrame() const;
 	void setAnimRecordFrame(int framenr);
 
-	RAS_IRasterizer*		GetRasterizer() { return m_rasterizer; }
 	RAS_ICanvas*		    GetCanvas() { return m_canvas; }
 	SCA_IInputDevice*		GetKeyboardDevice() { return m_keyboarddevice; }
 	SCA_IInputDevice*		GetMouseDevice() { return m_mousedevice; }
 
 	TaskScheduler*			GetTaskScheduler() { return m_taskscheduler; }
 
-	/// Dome functions
-	void			InitDome(short res, short mode, short angle, float resbuf, short tilt, struct Text* text); 
-	void			EndDome();
-	void			RenderDome();
-	bool			m_usedome;
-
 	///returns true if an update happened to indicate -> Render
 	bool			NextFrame();
-	void			Render();
 	void			BlenderRender(View3D *v3d, ARegion *ar);
 	
 	void			StartEngine(bool clearIpo);
@@ -518,10 +505,6 @@ protected:
 	void			AddScheduledScenes(void);
 	void			ReplaceScheduledScenes(void);
 	void			PostProcessScene(class KX_Scene* scene);
-	
-	bool			BeginFrame();
-	void			ClearFrame();
-	void			EndFrame();
 	
 	
 #ifdef WITH_CXX_GUARDEDALLOC

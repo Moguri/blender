@@ -54,9 +54,6 @@
 #include "KX_PyConstraintBinding.h"
 #include "KX_PythonMain.h"
 
-#include "RAS_OpenGLRasterizer.h"
-#include "RAS_ListRasterizer.h"
-
 #include "NG_LoopBackNetworkDeviceInterface.h"
 
 #include "BL_System.h"
@@ -268,7 +265,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		bool profile = (SYS_GetCommandLineInt(syshandle, "show_profile", 0) != 0);
 		bool frameRate = (SYS_GetCommandLineInt(syshandle, "show_framerate", 0) != 0);
 		bool animation_record = (SYS_GetCommandLineInt(syshandle, "animation_record", 0) != 0);
-		bool displaylists = (SYS_GetCommandLineInt(syshandle, "displaylists", 0) != 0) && GPU_display_list_support();
 #ifdef WITH_PYTHON
 		bool nodepwarnings = (SYS_GetCommandLineInt(syshandle, "ignore_deprecation_warnings", 0) != 0);
 #endif
@@ -282,7 +278,7 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		if (drawtype == OB_MATERIAL) drawtype = OB_TEXTURE;
 		if (animation_record) usefixed= false; /* override since you don't want to run full-speed for sim recording */
 
-		// create the canvas and rasterizer
+		// create the canvas
 		RAS_ICanvas* canvas = new KX_BlenderCanvas(wm, win, area_rect, ar);
 		
 		// default mouse state set on render panel
@@ -299,25 +295,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		else
 			canvas->SetSwapInterval((startscene->gm.vsync == VSYNC_ON) ? 1 : 0);
 
-		RAS_IRasterizer* rasterizer = NULL;
-		RAS_STORAGE_TYPE raster_storage = RAS_AUTO_STORAGE;
-
-		if (startscene->gm.raster_storage == RAS_STORE_VBO) {
-			raster_storage = RAS_VBO;
-		}
-		else if (startscene->gm.raster_storage == RAS_STORE_VA) {
-			raster_storage = RAS_VA;
-		}
-		//Don't use displaylists with VBOs
-		//If auto starts using VBOs, make sure to check for that here
-		if (displaylists && raster_storage != RAS_VBO)
-			rasterizer = new RAS_ListRasterizer(canvas, true, raster_storage);
-		else
-			rasterizer = new RAS_OpenGLRasterizer(canvas, raster_storage);
-
-		RAS_IRasterizer::MipmapOption mipmapval = rasterizer->GetMipmapping();
-
-		
 		// create the inputdevices
 		KX_BlenderKeyboardDevice* keyboarddevice = new KX_BlenderKeyboardDevice();
 		KX_BlenderMouseDevice* mousedevice = new KX_BlenderMouseDevice();
@@ -338,7 +315,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		ketsjiengine->SetMouseDevice(mousedevice);
 		ketsjiengine->SetNetworkDevice(networkdevice);
 		ketsjiengine->SetCanvas(canvas);
-		ketsjiengine->SetRasterizer(rasterizer);
 		ketsjiengine->SetUseFixedTime(usefixed);
 		ketsjiengine->SetTimingDisplay(frameRate, profile, properties);
 		ketsjiengine->SetRestrictAnimationFPS(restrictAnimFPS);
@@ -370,7 +346,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 			}
 		}
 
-		rasterizer->SetDrawingMode(drawtype);
 		ketsjiengine->SetCameraZoom(camzoom);
 		ketsjiengine->SetCameraOverrideZoom(2.0f);
 
@@ -432,16 +407,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		{
 			int startFrame = scene->r.cfra;
 			ketsjiengine->SetAnimRecordMode(animation_record, startFrame);
-			
-			// Quad buffered needs a special window.
-			if (scene->gm.stereoflag == STEREO_ENABLED) {
-				if (scene->gm.stereomode != RAS_IRasterizer::RAS_STEREO_QUADBUFFERED)
-					rasterizer->SetStereoMode((RAS_IRasterizer::StereoMode) scene->gm.stereomode);
-
-				rasterizer->SetEyeSeparation(scene->gm.eyeseparation);
-			}
-
-			rasterizer->SetBackColor(scene->gm.framing.col);
 		}
 		
 		if (exitrequested != KX_EXIT_REQUEST_QUIT_GAME)
@@ -478,10 +443,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 			setupGamePython(ketsjiengine, startscene, blenderdata, pyGlobalDict, &gameLogic, &gameLogic_keys, 0, NULL);
 #endif // WITH_PYTHON
 
-			//initialize Dome Settings
-			if (scene->gm.stereoflag == STEREO_DOME)
-				ketsjiengine->InitDome(scene->gm.dome.res, scene->gm.dome.mode, scene->gm.dome.angle, scene->gm.dome.resbuf, scene->gm.dome.tilt, scene->gm.dome.warptext);
-
 			// initialize 3D Audio Settings
 			AUD_Device* device = BKE_sound_get_device();
 			AUD_Device_setSpeedOfSound(device, scene->audio.speed_of_sound);
@@ -499,12 +460,8 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 				// convert and add scene
 				sceneconverter->ConvertScene(
 					startscene,
-				    rasterizer,
 					canvas);
 				ketsjiengine->AddScene(startscene);
-				
-				// init the rasterizer
-				rasterizer->Init();
 				
 				// start the engine
 				ketsjiengine->StartEngine(true);
@@ -611,9 +568,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		{
 			// set the cursor back to normal
 			canvas->SetMouseState(RAS_ICanvas::MOUSE_NORMAL);
-
-			// set mipmap setting back to its original value
-			rasterizer->SetMipmapping(mipmapval);
 		}
 		
 		// clean up some stuff
@@ -641,11 +595,6 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 		{
 			delete mousedevice;
 			mousedevice = NULL;
-		}
-		if (rasterizer)
-		{
-			delete rasterizer;
-			rasterizer = NULL;
 		}
 		if (canvas)
 		{

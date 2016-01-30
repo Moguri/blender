@@ -60,8 +60,6 @@
 #include "PHY_IPhysicsEnvironment.h"
 
 #include "RAS_MeshObject.h"
-#include "RAS_IRasterizer.h"
-#include "RAS_ILightObject.h"
 
 #include "KX_ConvertActuators.h"
 #include "KX_ConvertControllers.h"
@@ -1399,10 +1397,11 @@ static void BL_CreatePhysicsObjectNew(KX_GameObject* gameobj,
 
 
 
-static KX_LightObject *gamelight_from_blamp(Object *ob, Lamp *la, unsigned int layerflag, KX_Scene *kxscene, RAS_IRasterizer *rasterizer, KX_BlenderSceneConverter *converter)
+static KX_LightObject *gamelight_from_blamp(Object *ob, Lamp *la, unsigned int layerflag, KX_Scene *kxscene, KX_BlenderSceneConverter *converter)
 {
-	RAS_ILightObject *lightobj = rasterizer->CreateLight();
 	KX_LightObject *gamelight;
+#if 0
+	RAS_ILightObject *lightobj = rasterizer->CreateLight();
 	
 	lightobj->m_att1 = la->att1;
 	lightobj->m_att2 = (la->mode & LA_QUAD) ? la->att2 : 0.0f;
@@ -1434,8 +1433,9 @@ static KX_LightObject *gamelight_from_blamp(Object *ob, Lamp *la, unsigned int l
 	} else {
 		lightobj->m_type = RAS_ILightObject::LIGHT_NORMAL;
 	}
+#endif
 
-	gamelight = new KX_LightObject(kxscene, KX_Scene::m_callbacks, rasterizer, lightobj);
+	gamelight = new KX_LightObject(kxscene, KX_Scene::m_callbacks,NULL);
 	
 	return gamelight;
 }
@@ -1455,7 +1455,6 @@ static KX_Camera *gamecamera_from_bcamera(Object *ob, KX_Scene *kxscene, KX_Blen
 static KX_GameObject *gameobject_from_blenderobject(
 								Object *ob, 
 								KX_Scene *kxscene, 
-								RAS_IRasterizer *rendertools,
 								KX_BlenderSceneConverter *converter,
 								bool libloading) 
 {
@@ -1465,7 +1464,7 @@ static KX_GameObject *gameobject_from_blenderobject(
 	switch (ob->type) {
 	case OB_LAMP:
 	{
-		KX_LightObject* gamelight = gamelight_from_blamp(ob, static_cast<Lamp*>(ob->data), ob->lay, kxscene, rendertools, converter);
+		KX_LightObject* gamelight = gamelight_from_blamp(ob, static_cast<Lamp*>(ob->data), ob->lay, kxscene, converter);
 		gameobj = gamelight;
 		
 		if (blenderscene->lay & ob->lay)
@@ -1610,7 +1609,7 @@ static KX_GameObject *gameobject_from_blenderobject(
 	{
 		bool do_color_management = BKE_scene_check_color_management_enabled(blenderscene);
 		/* font objects have no bounding box */
-		gameobj = new KX_FontObject(kxscene,KX_Scene::m_callbacks, rendertools, ob, do_color_management);
+		gameobj = new KX_FontObject(kxscene,KX_Scene::m_callbacks, ob, do_color_management);
 
 		/* add to the list only the visible fonts */
 		if ((ob->lay & kxscene->GetBlenderScene()->lay) != 0)
@@ -1843,7 +1842,6 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 							  KX_Scene* kxscene,
 							  KX_KetsjiEngine* ketsjiEngine,
 							  e_PhysicsEngine	physics_engine,
-							  RAS_IRasterizer* rendertools,
 							  RAS_ICanvas* canvas,
 							  KX_BlenderSceneConverter* converter,
 							  bool alwaysUseExpandFraming,
@@ -1967,7 +1965,6 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 		KX_GameObject* gameobj = gameobject_from_blenderobject(
 										base->object, 
 										kxscene, 
-										rendertools, 
 										converter,
 										libloading);
 
@@ -2019,7 +2016,6 @@ void BL_ConvertBlenderObjects(struct Main* maggie,
 						KX_GameObject* gameobj = gameobject_from_blenderobject(
 														blenderobject, 
 														kxscene, 
-														rendertools, 
 														converter,
 														libloading);
 

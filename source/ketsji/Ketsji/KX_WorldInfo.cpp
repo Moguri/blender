@@ -160,7 +160,7 @@ void KX_WorldInfo::setAmbientColor(float r, float g, float b)
 void KX_WorldInfo::UpdateBackGround()
 {
 	if (m_hasworld) {
-		RAS_IRasterizer *m_rasterizer = KX_GetActiveEngine()->GetRasterizer();
+		RAS_IRasterizer *m_rasterizer = NULL;//KX_GetActiveEngine()->GetRasterizer();
 
 		if (m_rasterizer->GetDrawingMode() >= RAS_IRasterizer::KX_SOLID) {
 			m_rasterizer->SetBackColor(m_con_backgroundcolor);
@@ -172,7 +172,7 @@ void KX_WorldInfo::UpdateBackGround()
 void KX_WorldInfo::UpdateWorldSettings()
 {
 	if (m_hasworld) {
-		RAS_IRasterizer *m_rasterizer = KX_GetActiveEngine()->GetRasterizer();
+		RAS_IRasterizer *m_rasterizer = NULL;//KX_GetActiveEngine()->GetRasterizer();
 
 		if (m_rasterizer->GetDrawingMode() >= RAS_IRasterizer::KX_SOLID) {
 			m_rasterizer->SetAmbientColor(m_con_ambientcolor);

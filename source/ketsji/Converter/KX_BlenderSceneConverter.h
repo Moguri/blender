@@ -109,7 +109,6 @@ public:
 	 */
 	virtual void	ConvertScene(
 						class KX_Scene* destinationscene,
-						class RAS_IRasterizer* rendertools,
 						class RAS_ICanvas* canvas,
 						bool libloading=false
 					);

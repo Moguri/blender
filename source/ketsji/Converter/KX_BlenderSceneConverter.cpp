@@ -221,7 +221,7 @@ Scene *KX_BlenderSceneConverter::GetBlenderSceneForName(const STR_String &name)
 	return NULL;
 }
 
-void KX_BlenderSceneConverter::ConvertScene(KX_Scene *destinationscene, RAS_IRasterizer *rendertools,
+void KX_BlenderSceneConverter::ConvertScene(KX_Scene *destinationscene,
 											RAS_ICanvas *canvas, bool libloading)
 {
 	//find out which physics engine
@@ -267,7 +267,6 @@ void KX_BlenderSceneConverter::ConvertScene(KX_Scene *destinationscene, RAS_IRas
 		destinationscene,
 		m_ketsjiEngine,
 		physics_engine,
-		rendertools,
 		canvas,
 		this,
 		m_alwaysUseExpandFraming,

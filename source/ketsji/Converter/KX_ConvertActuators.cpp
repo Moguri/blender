@@ -908,6 +908,7 @@ void BL_ConvertActuators(const char* maggiename,
 
 		case ACT_2DFILTER:
 		{
+#if 0
 			bTwoDFilterActuator *_2dfilter = (bTwoDFilterActuator*) bact->data;
 			SCA_2DFilterActuator *tmp = NULL;
 
@@ -980,7 +981,7 @@ void BL_ConvertActuators(const char* maggiename,
 			}
 
 			baseact = tmp;
-
+#endif
 		}
 		break;
 		case ACT_PARENT:

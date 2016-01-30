@@ -2136,7 +2136,6 @@ void setupGamePython(KX_KetsjiEngine* ketsjiengine, KX_Scene *startscene, Main *
 	PyObject *modules, *dictionaryobject;
 
 	gp_Canvas = ketsjiengine->GetCanvas();
-	gp_Rasterizer = ketsjiengine->GetRasterizer();
 	gp_KetsjiEngine = ketsjiengine;
 	gp_KetsjiScene = startscene;
 
@@ -2184,9 +2183,9 @@ PyMODINIT_FUNC initRasterizerPythonBinding()
 	PyDict_SetItemString(d, "error", ErrorObject);
 	Py_DECREF(ErrorObject);
 
-	KX_MACRO_addTypesToDict(d, RAS_MIPMAP_NONE, RAS_IRasterizer::RAS_MIPMAP_NONE);
-	KX_MACRO_addTypesToDict(d, RAS_MIPMAP_NEAREST, RAS_IRasterizer::RAS_MIPMAP_NEAREST);
-	KX_MACRO_addTypesToDict(d, RAS_MIPMAP_LINEAR, RAS_IRasterizer::RAS_MIPMAP_LINEAR);
+	//KX_MACRO_addTypesToDict(d, RAS_MIPMAP_NONE, RAS_IRasterizer::RAS_MIPMAP_NONE);
+	//KX_MACRO_addTypesToDict(d, RAS_MIPMAP_NEAREST, RAS_IRasterizer::RAS_MIPMAP_NEAREST);
+	//KX_MACRO_addTypesToDict(d, RAS_MIPMAP_LINEAR, RAS_IRasterizer::RAS_MIPMAP_LINEAR);
 
 	/* for get/setVsync */
 	KX_MACRO_addTypesToDict(d, VSYNC_OFF, VSYNC_OFF);
@@ -2194,8 +2193,8 @@ PyMODINIT_FUNC initRasterizerPythonBinding()
 	KX_MACRO_addTypesToDict(d, VSYNC_ADAPTIVE, VSYNC_ADAPTIVE);
 
 	/* stereoscopy */
-	KX_MACRO_addTypesToDict(d, LEFT_EYE, RAS_IRasterizer::RAS_STEREO_LEFTEYE);
-	KX_MACRO_addTypesToDict(d, RIGHT_EYE, RAS_IRasterizer::RAS_STEREO_RIGHTEYE);
+	//KX_MACRO_addTypesToDict(d, LEFT_EYE, RAS_IRasterizer::RAS_STEREO_LEFTEYE);
+	//KX_MACRO_addTypesToDict(d, RIGHT_EYE, RAS_IRasterizer::RAS_STEREO_RIGHTEYE);
 
 	// XXXX Add constants here
 
