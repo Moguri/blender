@@ -145,7 +145,7 @@ static int BL_KetsjiNextFrame(KX_KetsjiEngine *ketsjiengine, bContext *C, wmWind
 		}
 
 		// render the frame
-		ketsjiengine->Render();
+		ketsjiengine->BlenderRender(CTX_wm_view3d(C), ar);
 	}
 
 	wm_window_process_events_nosleep();

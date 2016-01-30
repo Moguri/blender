@@ -45,6 +45,9 @@
 struct TaskScheduler;
 class KX_TimeCategoryLogger;
 
+struct View3D;
+struct ARegion;
+
 #define LEFT_EYE  1
 #define RIGHT_EYE 2
 
@@ -241,6 +244,7 @@ public:
 	///returns true if an update happened to indicate -> Render
 	bool			NextFrame();
 	void			Render();
+	void			BlenderRender(View3D *v3d, ARegion *ar);
 	
 	void			StartEngine(bool clearIpo);
 	void			StopEngine();

@@ -77,6 +77,14 @@
 
 #include "BL_Action.h" // For managing action lock.
 
+// Viewport drawing
+#include "GPU_glew.h"
+#include "GPU_framebuffer.h"
+extern "C" {
+#include "ED_view3d.h"
+}
+
+
 #define DEFAULT_LOGIC_TIC_RATE 60.0
 //#define DEFAULT_PHYSICS_TIC_RATE 60.0
 
@@ -930,6 +938,68 @@ void KX_KetsjiEngine::Render()
 	EndFrame();
 }
 
+void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
+{
+	KX_Scene *kxscene = m_scenes[0];
+	KX_Camera *kxcam = kxscene->GetActiveCamera();
+	Scene *blenderscene = kxscene->GetBlenderScene();
+
+	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
+	SG_SetActiveStage(SG_STAGE_RENDER);
+
+	kxcam->GetModelviewMatrix().getValue((float*)viewmat);
+	kxcam->GetProjectionMatrix().getValue((float*)winmat);
+
+	char err_out[256] = "unknown";
+	GPUOffScreen *ofs = GPU_offscreen_create(
+		m_canvas->GetWidth(),
+		m_canvas->GetHeight(),
+		0, // TODO setup AA
+		err_out
+	);
+
+	BeginFrame();
+
+	ED_view3d_draw_offscreen_imbuf(
+		blenderscene, v3d, ar, m_canvas->GetWidth(), m_canvas->GetHeight(),
+		0, false, R_ADDSKY, 0, true, NULL, NULL, ofs, err_out
+	);
+
+	{
+		// Draw fullscreen quad
+		m_canvas->SetViewPort(0, 0, m_canvas->GetWidth(), m_canvas->GetHeight());
+		int tex = GPU_offscreen_color_texture(ofs);
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
+		glMatrixMode(GL_TEXTURE);
+		glLoadIdentity();
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glBegin(GL_QUADS);
+			glColor4f(1.f, 1.f, 1.f, 1.f);
+			//glColor4f(0.5f, 1.f, 0.f, 1.f);
+			glTexCoord2f(1.0f, 1.0f); glVertex2f(1.0f,1.0f);
+			glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0f,1.0f);
+			glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f,-1.0f);
+			glTexCoord2f(1.0f, 0.0f); glVertex2f(1.0f,-1.0f);
+		glEnd();
+
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
+	}
+
+
+	EndFrame();
+
+	GPU_offscreen_free(ofs);
+}
 
 
 void KX_KetsjiEngine::RequestExit(int exitrequestmode)
