@@ -77,6 +77,7 @@
 #include "GPU_glew.h"
 #include "GPU_framebuffer.h"
 extern "C" {
+#include "DNA_view3d_types.h"
 #include "ED_view3d.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
@@ -533,21 +534,27 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 {
 	KX_Scene *kxscene = m_scenes[0];
 	Scene *blenderscene = kxscene->GetBlenderScene();
+	int sx = m_canvas->GetWidth() + 1;
+	int sy = m_canvas->GetHeight() + 1;
+	int samples = 0; // TODO get AA working
 
 	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
 	SG_SetActiveStage(SG_STAGE_RENDER);
 
 	char err_out[256] = "unknown";
 	GPUOffScreen *ofs = GPU_offscreen_create(
-		m_canvas->GetWidth(),
-		m_canvas->GetHeight(),
-		0, // TODO setup AA
+		sx,
+		sy,
+		samples,
 		err_out
 	);
 
+	v3d->flag &= ~V3D_SELECT_OUTLINE;
+	v3d->flag2 |= V3D_RENDER_OVERRIDE;
+	v3d->flag3 |= V3D_SHOW_WORLD;
 	ImBuf *ibuf = ED_view3d_draw_offscreen_imbuf(
-		blenderscene, v3d, ar, m_canvas->GetWidth(), m_canvas->GetHeight(),
-		0, false, R_ADDSKY, 0, true, NULL, NULL, ofs, err_out
+		blenderscene, v3d, ar, sx, sy,
+		0, false, R_ADDSKY, samples, false, NULL, NULL, ofs, err_out
 	);
 	IMB_freeImBuf(ibuf);
 
