@@ -947,9 +947,6 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
 	SG_SetActiveStage(SG_STAGE_RENDER);
 
-	kxcam->GetModelviewMatrix().getValue((float*)viewmat);
-	kxcam->GetProjectionMatrix().getValue((float*)winmat);
-
 	char err_out[256] = "unknown";
 	GPUOffScreen *ofs = GPU_offscreen_create(
 		m_canvas->GetWidth(),
