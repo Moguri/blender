@@ -540,6 +540,7 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 	int sx = m_canvas->GetWidth() + 1;
 	int sy = m_canvas->GetHeight() + 1;
 	int samples = 0; // TODO get AA working
+	short flag = v3d->flag, flag2 = v3d->flag2, flag3 = v3d->flag3;
 
 	/* view state */
 	GPUFXSettings fx_settings = v3d->fx_settings;
@@ -640,6 +641,11 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 
 	PostRenderScene(kxscene);
 	m_canvas->SwapBuffers();
+
+	// Restore flags
+	v3d->flag = flag;
+	v3d->flag2 = flag2;
+	v3d->flag3 = flag3;
 }
 
 
