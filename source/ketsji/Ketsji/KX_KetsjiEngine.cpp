@@ -82,6 +82,8 @@
 #include "GPU_framebuffer.h"
 extern "C" {
 #include "ED_view3d.h"
+#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.h"
 }
 
 
@@ -940,9 +942,7 @@ void KX_KetsjiEngine::Render()
 
 void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 {
-	KX_Scene *kxscene = m_scenes[0];
-	KX_Camera *kxcam = kxscene->GetActiveCamera();
-	Scene *blenderscene = kxscene->GetBlenderScene();
+	Scene *blenderscene = m_scenes[0]->GetBlenderScene();
 
 	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
 	SG_SetActiveStage(SG_STAGE_RENDER);
@@ -955,12 +955,11 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 		err_out
 	);
 
-	BeginFrame();
-
-	ED_view3d_draw_offscreen_imbuf(
+	ImBuf *ibuf = ED_view3d_draw_offscreen_imbuf(
 		blenderscene, v3d, ar, m_canvas->GetWidth(), m_canvas->GetHeight(),
 		0, false, R_ADDSKY, 0, true, NULL, NULL, ofs, err_out
 	);
+	IMB_freeImBuf(ibuf);
 
 	{
 		// Draw fullscreen quad
@@ -992,10 +991,8 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 		glPopMatrix();
 	}
 
-
-	EndFrame();
-
 	GPU_offscreen_free(ofs);
+	m_canvas->SwapBuffers();
 }
 
 
