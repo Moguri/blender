@@ -665,6 +665,7 @@ extern "C" void StartKetsjiShell(struct bContext *C, struct ARegion *ar, rcti *c
 
 	// Restore main from MemFile
 	BKE_read_file_from_memfile(C, memfile, NULL);
+	MEM_freeN(memfile);
 
 #ifdef WITH_PYTHON
 	PyDict_Clear(pyGlobalDict);
