@@ -99,9 +99,7 @@ KX_GameObject::KX_GameObject(
       m_previousLodLevel(0),
       m_pBlenderObject(NULL),
       m_pBlenderGroupObject(NULL),
-      m_bUseObjectColor(false),
       m_bIsNegativeScaling(false),
-      m_objectColor(1.0f, 1.0f, 1.0f, 1.0f),
       m_bVisible(true),
       m_bCulled(true),
       m_bOccluder(false),
@@ -782,8 +780,8 @@ void KX_GameObject::UpdateBuckets( bool recursive )
 		for (mit.begin(); !mit.end(); ++mit)
 		{
 			ms = *mit;
-			ms->m_bObjectColor = m_bUseObjectColor;
-			ms->m_RGBAcolor = m_objectColor;
+			ms->m_bObjectColor = true;
+			ms->m_RGBAcolor = GetObjectColor();
 			ms->m_bVisible = m_bVisible;
 			ms->m_bCulled = m_bCulled || !m_bVisible;
 			if (!ms->m_bCulled) 
@@ -1176,12 +1174,12 @@ void KX_GameObject::ResolveCombinedVelocities(
 
 void KX_GameObject::SetObjectColor(const MT_Vector4& rgbavec)
 {
-	m_bUseObjectColor = true;
-	m_objectColor = rgbavec;
+	rgbavec.getValue(m_pBlenderObject->col);
 }
 
 const MT_Vector4& KX_GameObject::GetObjectColor()
 {
+	m_objectColor = MT_Vector4(m_pBlenderObject->col);
 	return m_objectColor;
 }
 

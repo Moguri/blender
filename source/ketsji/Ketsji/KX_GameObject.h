@@ -95,7 +95,6 @@ protected:
 	struct Object*						m_pBlenderObject;
 	struct Object*						m_pBlenderGroupObject;
 	
-	bool								m_bUseObjectColor;
 	bool								m_bIsNegativeScaling;
 	MT_Vector4							m_objectColor;
 
