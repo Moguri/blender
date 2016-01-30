@@ -48,10 +48,6 @@ if(WITH_BULLET)
 	add_subdirectory(Physics/Bullet)
 endif()
 
-if(WITH_PYTHON)
-	add_subdirectory(VideoTexture)
-endif()
-
 if(WITH_PLAYER)
 	add_subdirectory(GamePlayer)
 endif()
