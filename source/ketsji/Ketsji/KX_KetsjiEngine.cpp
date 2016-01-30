@@ -77,10 +77,11 @@
 #include "GPU_glew.h"
 #include "GPU_framebuffer.h"
 extern "C" {
+#include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 #include "ED_view3d.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_imbuf.h"
+#include "BKE_camera.h"
+#include "BLI_math.h"
 }
 
 
@@ -533,15 +534,26 @@ bool KX_KetsjiEngine::NextFrame()
 void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 {
 	KX_Scene *kxscene = m_scenes[0];
-	Scene *blenderscene = kxscene->GetBlenderScene();
+	Scene *scene = kxscene->GetBlenderScene();
+	RegionView3D *rv3d = (RegionView3D*)ar->regiondata;
+	char err_out[256] = "unknown";
 	int sx = m_canvas->GetWidth() + 1;
 	int sy = m_canvas->GetHeight() + 1;
 	int samples = 0; // TODO get AA working
 
+	/* view state */
+	GPUFXSettings fx_settings = v3d->fx_settings;
+	bool is_ortho = false;
+	float winmat[4][4];
+	const char *viewname = NULL;
+
 	m_logger->StartLog(tc_rasterizer, m_kxsystem->GetTimeInSeconds(), true);
 	SG_SetActiveStage(SG_STAGE_RENDER);
 
-	char err_out[256] = "unknown";
+	v3d->flag &= ~V3D_SELECT_OUTLINE;
+	v3d->flag2 |= V3D_RENDER_OVERRIDE;
+	v3d->flag3 |= V3D_SHOW_WORLD;
+
 	GPUOffScreen *ofs = GPU_offscreen_create(
 		sx,
 		sy,
@@ -549,14 +561,50 @@ void KX_KetsjiEngine::BlenderRender(View3D *v3d, ARegion *ar)
 		err_out
 	);
 
-	v3d->flag &= ~V3D_SELECT_OUTLINE;
-	v3d->flag2 |= V3D_RENDER_OVERRIDE;
-	v3d->flag3 |= V3D_SHOW_WORLD;
-	ImBuf *ibuf = ED_view3d_draw_offscreen_imbuf(
-		blenderscene, v3d, ar, sx, sy,
-		0, false, R_ADDSKY, samples, false, NULL, NULL, ofs, err_out
+	ED_view3d_draw_offscreen_init(scene, v3d);
+
+	GPU_offscreen_bind(ofs, true);
+
+	/* render 3d view */
+	if (rv3d->persp == RV3D_CAMOB && v3d->camera) {
+		CameraParams params;
+		Object *camera = BKE_camera_multiview_render(scene, v3d->camera, viewname);
+
+		BKE_camera_params_init(&params);
+		/* fallback for non camera objects */
+		params.clipsta = v3d->near;
+		params.clipend = v3d->far;
+		BKE_camera_params_from_object(&params, camera);
+		BKE_camera_multiview_params(&scene->r, &params, camera, viewname);
+		BKE_camera_params_compute_viewplane(&params, sx, sy, scene->r.xasp, scene->r.yasp);
+		BKE_camera_params_compute_matrix(&params);
+
+		BKE_camera_to_gpu_dof(camera, &fx_settings);
+
+		is_ortho = params.is_ortho;
+		copy_m4_m4(winmat, params.winmat);
+	}
+	else {
+		rctf viewplane;
+		float clipsta, clipend;
+
+		is_ortho = ED_view3d_viewplane_get(v3d, rv3d, sx, sy, &viewplane, &clipsta, &clipend, NULL);
+		if (is_ortho) {
+			orthographic_m4(winmat, viewplane.xmin, viewplane.xmax, viewplane.ymin, viewplane.ymax, -clipend, clipend);
+		}
+		else {
+			perspective_m4(winmat, viewplane.xmin, viewplane.xmax, viewplane.ymin, viewplane.ymax, clipsta, clipend);
+		}
+	}
+
+	ED_view3d_draw_offscreen(
+		scene, v3d, ar, sx, sy, NULL, winmat,
+		false, true, !is_ortho, viewname,
+		NULL, &fx_settings, ofs
 	);
-	IMB_freeImBuf(ibuf);
+
+	/* unbind */
+	GPU_offscreen_unbind(ofs, true);
 
 	{
 		// Draw fullscreen quad
